@@ -1,37 +1,54 @@
 # Database Design
 
-> Planned design direction. The full schema is **not** created yet — no tables exist beyond what future migrations will define.
+> Documents **only what is currently implemented** (Phase 1). Future entities are listed at the bottom as direction only — they are not designed or created yet.
 
 ## Engine & Tooling
 
-- PostgreSQL 17
+- PostgreSQL 17 (local dev)
 - SQLAlchemy 2.x as ORM
-- Alembic for migrations (integration planned)
-- pgvector extension (planned) for embedding storage and similarity search
+- Alembic for migrations (`backend/migrations`)
+- pgvector extension (planned, later) for embedding storage and similarity search
 
-## Planned Core Entities
+## Implemented Tables
 
-| Entity | Purpose |
-|--------|---------|
-| `users` | All users; role-based (7 roles, see USER_ROLES.md) |
-| `institutions` | Universities, industry/orgs, government departments |
-| `challenges` | Submitted societal challenges |
-| `problem_dna` | Structured AI analysis of a challenge (1:1 with challenge) |
-| `projects` | Collaboration projects formed from matched challenges |
-| `matches` | Challenge ↔ university recommendations with scores |
-| `embeddings` | Vector representations for semantic search |
+### `challenges`
 
-## Design Principles
+A societal challenge reported by a citizen. Created by Alembic revision `dbefd1316b42`.
 
-1. **Repository pattern in code** — models live in `backend/app/models`, accessed only via `backend/app/repositories`.
-2. **Migrations over manual SQL** — schema changes go through Alembic once integrated.
-3. **AI outputs are versioned data** — Problem DNA rows store the model/prompt version used, enabling reproducibility.
-4. **Soft references to SDGs** — SDG mapping stored as structured data, not free text.
+| Column        | Type                       | Constraints                                    |
+|---------------|----------------------------|------------------------------------------------|
+| `id`          | `UUID`                     | Primary key, generated client-side (`uuid4`)   |
+| `title`       | `VARCHAR(200)`             | NOT NULL                                       |
+| `description` | `TEXT`                     | NOT NULL                                       |
+| `location`    | `VARCHAR(200)`             | NOT NULL                                       |
+| `status`      | `challenge_status` (enum)  | NOT NULL, default `'submitted'`, indexed       |
+| `created_at`  | `TIMESTAMPTZ`              | NOT NULL, server default `now()`               |
+| `updated_at`  | `TIMESTAMPTZ`              | NOT NULL, default `now()`, updated on change   |
 
-## Conventions (planned)
+**Enum type `challenge_status`:**
 
-- Table names: plural snake_case (`challenges`, `problem_dna`).
-- Every table: `id` primary key, `created_at`, `updated_at`.
-- Foreign keys explicit and named (`challenge_id`).
+- `submitted`
+- `under_review`
+- `validated`
+- `rejected`
 
-Detailed column-level design will be added here when the MVP schema is drafted.
+Implemented as a native PostgreSQL enum so invalid statuses are impossible at the storage layer; the same values are mirrored by `ChallengeStatus` (Python `enum.Enum`) in `backend/app/models/challenge.py` and validated again by Pydantic on input.
+
+**Indexes:** primary key on `id`, plus `ix_challenges_status` on `status` (status-driven filtering arrives with Phase 3 discovery).
+
+**Design notes:**
+
+- UUID primary keys avoid sequential-ID enumeration and work well across future service extraction.
+- Timestamps are timezone-aware (`TIMESTAMPTZ`) with DB-side defaults; `updated_at` also updates via SQLAlchemy `onupdate`.
+- Kept intentionally minimal — AI fields, evidence, reporter identity, etc. will be added through later migrations when those phases start.
+
+## Data Access Conventions
+
+1. Models live in `backend/app/models`, accessed only via `backend/app/repositories`.
+2. Schema changes go exclusively through Alembic — no manual SQL or pgAdmin DDL.
+3. Table names: plural snake_case (`challenges`).
+4. Every table: `id` primary key, `created_at`, `updated_at`.
+
+## Direction Only (NOT implemented yet)
+
+`users`, `institutions`, `problem_dna`, `projects`, `matches`, `embeddings` remain planned concepts from the architecture docs. They will be designed column-by-column when their roadmap phase begins.
