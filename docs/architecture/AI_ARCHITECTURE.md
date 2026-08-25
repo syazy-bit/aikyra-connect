@@ -1,49 +1,56 @@
 # AI Architecture
 
-> Planned architecture. No AI functionality is implemented yet.
+> Phase 2 implemented the deterministic Problem DNA foundation. No LLM inference exists yet.
 
 ## Principles
 
 1. **AI assists, humans decide.** AI supports understanding and recommendations. It does not independently make final institutional or project decisions. Human validation is a mandatory workflow step.
 2. **Local-first inference.** Ollama runs on local hardware; no external LLM APIs.
 3. **Backend-mediated.** All AI calls are made by the FastAPI backend. The frontend never touches AI services directly.
-4. **Explainability.** Every AI output (Problem DNA field, match score) carries a confidence value and human-readable rationale.
+4. **Explainability.** Every output carries a confidence value and persisted evidence (`signals`).
 
-## Component Map
-
-```
-ai/
-├── classifiers/    Challenge domain / severity classification   (planned)
-├── embeddings/     sentence-transformers text embeddings        (planned)
-├── matching/       Matching-engine support logic                (planned)
-├── prompts/        Versioned prompt templates for Ollama        (planned)
-├── pipelines/      End-to-end flows (e.g., Problem DNA gen)     (planned)
-├── models/         Local model artifacts (not committed)        (planned)
-└── tests/          Unit tests
-```
-
-## Model Strategy (planned)
-
-| Task | Tool | Notes |
-|------|------|-------|
-| Structured analysis of challenge text | Ollama LLM | Prompted JSON output → Pydantic validation |
-| Semantic similarity for matching | sentence-transformers | Stored as pgvector in PostgreSQL |
-| Ranking / scoring refinements | scikit-learn | Hybrid scoring with rule-based signals |
-
-## Data Flow: AI Understanding
+## Component Map (current state)
 
 ```
-Challenge text (backend)
-  → pipeline selects prompt template (ai/prompts)
-  → Ollama inference → raw JSON
-  → Pydantic schema validation + confidence scoring
-  → Problem DNA stored in PostgreSQL (status: "pending_validation")
-  → Human validates/edits → status becomes "validated"
+backend/app/
+├── core/taxonomy.py                    Controlled domain taxonomy (implemented)
+├── services/classification/
+│   ├── normalizer.py                   Text preprocessing (implemented)
+│   ├── rule_classifier.py              Deterministic baseline classifier (implemented)
+│   └── schemas.py                      ClassificationResult contract (implemented)
+├── services/problem_dna_service.py     Orchestration + transactions (implemented)
+├── repositories/problem_dna_repository.py  DB access (implemented)
+├── models/problem_dna.py               problem_dna table (implemented)
+└── api/problem_dna.py                  /analyze and /dna endpoints (implemented)
+
+ai/                                     (future) prompts, pipelines, model artifacts
+```
+
+## Model Strategy
+
+| Task | Tool | Status |
+|------|------|--------|
+| Structured analysis of challenge text | Rule/keyword classifier | **Implemented (baseline)** |
+| Structured analysis of challenge text | Ollama LLM | Planned — same `classify()` contract, chosen behind the service boundary |
+| Semantic similarity for matching | sentence-transformers → pgvector | Planned |
+
+## Data Flow: AI Understanding (implemented flow, deterministic stage)
+
+```
+POST /api/challenges/{id}/analyze
+  → ChallengeDnaService loads challenge
+  → rule_classifier.classify(title, description, location)
+  → ClassificationResult validated by Pydantic
+  → problem_dna row stored (generated_by=deterministic_baseline,
+    validation_status=pending_validation or needs_review)
+  → GET /api/challenges/{id}/dna returns DNA with confidence + signals
 ```
 
 ## Failure & Guardrails
 
-- If Ollama is unavailable, challenges are still stored; Problem DNA generation retries later.
-- All model outputs pass schema validation; invalid outputs trigger retry, then flag for manual review — never silent acceptance.
+- Analysis never runs inside repositories or routes — only in services.
+- Weak results (no domain, confidence < 0.45: fewer than 3 converging keyword hits) become `needs_review`.
+- Validated DNA cannot be overwritten by automated re-analysis (409).
+- No endpoint claims AI classification that did not happen; source is explicit.
 
 See also [AI_PIPELINE.md](../ai/AI_PIPELINE.md) and [PROBLEM_DNA.md](../ai/PROBLEM_DNA.md).
