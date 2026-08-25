@@ -1,0 +1,156 @@
+/* --- CSS Reset & Base Styles --- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  color: var(--text-primary);
+  background-color: var(--bg-canvas);
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  color: var(--text-primary);
+  background-color: var(--bg-canvas);
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* --- Typography --- */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  color: var(--text-primary);
+  line-height: 1.25;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+h1 {
+  font-size: 2.25rem; /* 36px */
+}
+
+@media (min-width: 768px) {
+  h1 {
+    font-size: 2.75rem; /* 44px */
+  }
+}
+
+h2 {
+  font-size: 1.75rem; /* 28px */
+}
+
+@media (min-width: 768px) {
+  h2 {
+    font-size: 2rem; /* 32px */
+  }
+}
+
+h3 {
+  font-size: 1.35rem; /* 22px */
+}
+
+h4 {
+  font-size: 1.125rem; /* 18px */
+}
+
+p {
+  color: var(--text-secondary);
+  line-height: 1.625;
+}
+
+p.lead {
+  font-size: 1.125rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+small {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+a {
+  color: var(--color-teal-700);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--color-teal-900);
+  text-decoration: underline;
+}
+
+/* --- Accessible Focus Ring --- */
+:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+/* --- Layout Containers --- */
+.container {
+  width: 100%;
+  max-width: var(--container-max-w);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--space-4);
+  padding-right: var(--space-4);
+}
+
+@media (min-width: 768px) {
+  .container {
+    padding-left: var(--space-6);
+    padding-right: var(--space-6);
+  }
+}
+
+.container-narrow {
+  width: 100%;
+  max-width: var(--content-narrow-w);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--space-4);
+  padding-right: var(--space-4);
+}
+
+@media (min-width: 768px) {
+  .container-narrow {
+    padding-left: var(--space-6);
+    padding-right: var(--space-6);
+  }
+}
+
+/* --- Accessibility Helper --- */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}

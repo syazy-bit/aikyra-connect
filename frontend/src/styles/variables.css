@@ -1,0 +1,130 @@
+:root {
+  /* --- Typography --- */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  --font-display: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* --- Color Palette --- */
+  /* Neutrals */
+  --color-slate-950: #020617;
+  --color-slate-900: #0f172a;
+  --color-slate-800: #1e293b;
+  --color-slate-700: #334155;
+  --color-slate-600: #475569;
+  --color-slate-500: #64748b;
+  --color-slate-400: #94a3b8;
+  --color-slate-300: #cbd5e1;
+  --color-slate-200: #e2e8f0;
+  --color-slate-100: #f1f5f9;
+  --color-slate-50: #f8fafc;
+  --color-white: #ffffff;
+
+  /* Primary Brand — Civic Emerald / Teal */
+  --color-teal-900: #134e4a;
+  --color-teal-800: #115e59;
+  --color-teal-700: #0f766e;
+  --color-teal-600: #0d9488;
+  --color-teal-500: #14b8a6;
+  --color-teal-100: #ccfbf1;
+  --color-teal-50: #f0fdfa;
+
+  /* Accent — Warm Amber / Civic Spark */
+  --color-amber-800: #92400e;
+  --color-amber-700: #b45309;
+  --color-amber-600: #d97706;
+  --color-amber-500: #f59e0b;
+  --color-amber-100: #fef3c7;
+  --color-amber-50: #fffbeb;
+
+  /* Semantic Feedback */
+  --color-danger-700: #b91c1c;
+  --color-danger-600: #dc2626;
+  --color-danger-100: #fee2e2;
+  --color-danger-50: #fef2f2;
+
+  --color-success-700: #15803d;
+  --color-success-600: #16a34a;
+  --color-success-100: #dcfce7;
+  --color-success-50: #f0fdf4;
+
+  --color-info-700: #0369a1;
+  --color-info-600: #0284c7;
+  --color-info-100: #e0f2fe;
+  --color-info-50: #f0f9ff;
+
+  /* --- Semantic Tokens --- */
+  --bg-canvas: var(--color-slate-50);
+  --bg-surface: var(--color-white);
+  --bg-surface-elevated: var(--color-white);
+  --bg-surface-subtle: var(--color-slate-100);
+  --bg-surface-accent: var(--color-teal-50);
+
+  --text-primary: var(--color-slate-900);
+  --text-secondary: var(--color-slate-700);
+  --text-muted: var(--color-slate-500);
+  --text-inverse: var(--color-white);
+  --text-brand: var(--color-teal-700);
+
+  --border-subtle: var(--color-slate-200);
+  --border-medium: var(--color-slate-300);
+  --border-strong: var(--color-slate-400);
+  --border-focus: var(--color-teal-600);
+
+  --primary-default: var(--color-teal-700);
+  --primary-hover: var(--color-teal-800);
+  --primary-active: var(--color-teal-900);
+  --primary-subtle: var(--color-teal-100);
+
+  /* Status Badges */
+  --status-submitted-bg: var(--color-info-100);
+  --status-submitted-text: var(--color-info-700);
+  --status-submitted-border: #bae6fd;
+
+  --status-review-bg: var(--color-amber-100);
+  --status-review-text: var(--color-amber-800);
+  --status-review-border: #fde68a;
+
+  --status-validated-bg: var(--color-success-100);
+  --status-validated-text: var(--color-success-700);
+  --status-validated-border: #bbf7d0;
+
+  --status-rejected-bg: var(--color-danger-100);
+  --status-rejected-text: var(--color-danger-700);
+  --status-rejected-border: #fecaca;
+
+  /* --- Spacing Scale --- */
+  --space-1: 0.25rem;  /* 4px */
+  --space-2: 0.5rem;   /* 8px */
+  --space-3: 0.75rem;  /* 12px */
+  --space-4: 1rem;     /* 16px */
+  --space-5: 1.25rem;  /* 20px */
+  --space-6: 1.5rem;   /* 24px */
+  --space-8: 2rem;     /* 32px */
+  --space-10: 2.5rem;  /* 40px */
+  --space-12: 3rem;    /* 48px */
+  --space-16: 4rem;    /* 64px */
+  --space-20: 5rem;    /* 80px */
+  --space-24: 6rem;    /* 96px */
+
+  /* --- Border Radius --- */
+  --radius-sm: 0.375rem; /* 6px */
+  --radius-md: 0.5rem;   /* 8px */
+  --radius-lg: 0.75rem;  /* 12px */
+  --radius-xl: 1rem;     /* 16px */
+  --radius-full: 9999px;
+
+  /* --- Shadows --- */
+  --shadow-xs: 0 1px 2px 0 rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 1px 3px 0 rgba(15, 23, 42, 0.08), 0 1px 2px -1px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.08), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.03);
+  --shadow-card-hover: 0 12px 24px -4px rgba(15, 23, 42, 0.12), 0 4px 8px -2px rgba(15, 23, 42, 0.04);
+
+  /* --- Transitions --- */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* --- Layout Max Width --- */
+  --container-max-w: 72rem; /* 1152px */
+  --content-narrow-w: 48rem; /* 768px */
+}
