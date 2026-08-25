@@ -1,58 +1,59 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useCallback, useContext, useState, useEffect } from "react";
 
 const RouterContext = createContext(null);
 
+function readLocation() {
+  return {
+    path: window.location.pathname || "/",
+    search: window.location.search || "",
+  };
+}
+
 /**
- * Lightweight SPA Client Router using native pushState and popstate.
- * Supports path parsing for /, /report, /challenges, and /challenges/:id.
+ * Lightweight SPA client router using native pushState and popstate.
+ * Routes are matched on the pathname; query strings are exposed as a plain
+ * object so view state (search, filters, sort, page) survives refresh,
+ * deep links and back/forward navigation.
  */
 export function RouterProvider({ children }) {
-  const [currentPath, setCurrentPath] = useState(
-    window.location.pathname || "/"
-  );
+  const [location, setLocation] = useState(readLocation);
 
   useEffect(() => {
-    const handlePopState = () => {
-      setCurrentPath(window.location.pathname || "/");
-    };
-
+    const handlePopState = () => setLocation(readLocation());
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
-  const navigate = (to) => {
-    if (to === currentPath) return;
-    window.history.pushState({}, "", to);
-    setCurrentPath(to);
+  const navigate = useCallback((to) => {
+    const target = to.startsWith("/") ? to : `/${to}`;
+    if (target === `${window.location.pathname}${window.location.search}`) return;
+    window.history.pushState({}, "", target);
+    setLocation(readLocation());
     window.scrollTo({ top: 0, behavior: "smooth" });
-  };
+  }, []);
 
-  // Route matcher helper
   const getRoute = () => {
-    const path = currentPath.replace(/\/+$/, "") || "/";
+    const path = location.path.replace(/\/+$/, "") || "/";
+    const params = Object.fromEntries(new URLSearchParams(location.search));
 
-    if (path === "/") {
-      return { name: "home", params: {} };
-    }
-    if (path === "/report") {
-      return { name: "report", params: {} };
-    }
-    if (path === "/challenges") {
-      return { name: "challenges", params: {} };
-    }
+    if (path === "/") return { name: "home", params: {}, query: {} };
+    if (path === "/report") return { name: "report", params: {}, query: {} };
+    if (path === "/challenges") return { name: "challenges", params: {}, query: params };
 
     const challengeDetailMatch = path.match(/^\/challenges\/([^/]+)$/);
     if (challengeDetailMatch) {
       return {
         name: "challenge-detail",
         params: { id: challengeDetailMatch[1] },
+        query: params,
       };
     }
 
-    return { name: "not-found", params: {} };
+    return { name: "not-found", params: {}, query: {} };
   };
 
   const route = getRoute();
+  const currentPath = location.path;
 
   return (
     <RouterContext.Provider value={{ currentPath, navigate, route }}>
@@ -69,18 +70,14 @@ export function useRouter() {
   return context;
 }
 
-/**
- * Accessible Link component for SPA navigation.
- */
+/** Accessible Link component for SPA navigation. */
 export function Link({ href, children, className = "", ...props }) {
   const { navigate, currentPath } = useRouter();
-  const isActive = currentPath === href;
+  const isActive = currentPath === href.split("?")[0];
 
   const handleClick = (e) => {
-    // Let browser handle special key combinations (e.g. cmd/ctrl click for new tab)
-    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
-      return;
-    }
+    // Let the browser handle modifier-clicks (open in new tab etc.)
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault();
     navigate(href);
   };

@@ -2,8 +2,16 @@ import React from "react";
 import { Link } from "../context/RouterContext.jsx";
 import { StatusBadge } from "./StatusBadge.jsx";
 
+const URGENCY_LABELS = {
+  low: "Low urgency",
+  medium: "Medium urgency",
+  high: "High urgency",
+  critical: "Critical urgency",
+};
+
 export function ChallengeCard({ challenge }) {
   if (!challenge) return null;
+  const dna = challenge.dna ?? null;
 
   const formattedDate = challenge.created_at
     ? new Date(challenge.created_at).toLocaleDateString("en-IN", {
@@ -25,21 +33,38 @@ export function ChallengeCard({ challenge }) {
         </h3>
       </Link>
 
+      {/* Understanding state line — never fabricated */}
+      {dna ? (
+        <div className="card-dna-row">
+          {dna.primary_domain_label && (
+            <span className="domain-chip">{dna.primary_domain_label}</span>
+          )}
+          <span className={`urgency-badge urgency-${dna.urgency}`}>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+              <line x1="12" y1="9" x2="12" y2="13" />
+              <line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
+            {URGENCY_LABELS[dna.urgency] ?? dna.urgency}
+          </span>
+        </div>
+      ) : (
+        <div className="card-dna-row">
+          <span className="analysis-pending-tag">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+            Analysis pending
+          </span>
+        </div>
+      )}
+
       <p className="card-description">{challenge.description}</p>
 
       <div className="card-meta">
         <div className="meta-item" title="Location">
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
             <circle cx="12" cy="10" r="3" />
           </svg>
@@ -48,17 +73,7 @@ export function ChallengeCard({ challenge }) {
 
         {formattedDate && (
           <div className="meta-item" title="Submitted Date">
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
               <line x1="16" y1="2" x2="16" y2="6" />
               <line x1="8" y1="2" x2="8" y2="6" />

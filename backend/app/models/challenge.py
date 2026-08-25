@@ -2,11 +2,16 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, Index, String, Text, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Computed, DateTime, Enum, Index, String, Text, func
+from sqlalchemy.dialects.postgresql import TSVECTOR, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
+
+_SEARCH_VECTOR_EXPRESSION = (
+    "to_tsvector('english', coalesce(title, '') || ' ' || "
+    "coalesce(description, '') || ' ' || coalesce(location, ''))"
+)
 
 
 class ChallengeStatus(str, enum.Enum):
@@ -44,8 +49,16 @@ class Challenge(Base):
         onupdate=func.now(),
         nullable=False,
     )
+    # Database-generated full-text search vector (Phase 3 discovery).
+    # Maintained entirely by PostgreSQL; never written by application code.
+    search_vector: Mapped[str | None] = mapped_column(
+        TSVECTOR,
+        Computed(_SEARCH_VECTOR_EXPRESSION, persisted=True),
+        nullable=True,
+    )
 
     __table_args__ = (
         Index("ix_challenges_status", "status"),
         Index("ix_challenges_created_at", "created_at"),
+        Index("ix_challenges_search_vector", "search_vector", postgresql_using="gin"),
     )

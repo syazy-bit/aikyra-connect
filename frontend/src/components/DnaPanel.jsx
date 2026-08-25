@@ -1,0 +1,140 @@
+import React, { useState } from "react";
+
+const VALIDATION_BANNERS = {
+  pending_validation: {
+    className: "dna-banner-pending",
+    text: "Automatically analyzed · Awaiting validation",
+    title: "This analysis was generated automatically by Aikyra's rule-based baseline and has not been reviewed by a human yet.",
+  },
+  needs_review: {
+    className: "dna-banner-review",
+    text: "Needs review",
+    title: "The automated baseline could not confidently classify this problem. Its output should be treated as preliminary.",
+  },
+  validated: {
+    className: "dna-banner-validated",
+    text: "Validated",
+    title: "This analysis has been reviewed and confirmed by a human reviewer.",
+  },
+};
+
+export function DnaStatusBadge({ status }) {
+  const banner = VALIDATION_BANNERS[status] ?? VALIDATION_BANNERS.pending_validation;
+  return (
+    <span className={`dna-status-badge ${banner.className}`} role="status">
+      {banner.text}
+    </span>
+  );
+}
+
+export function ConfidenceMeter({ score }) {
+  const percent = Math.round((score ?? 0) * 100);
+  return (
+    <div className="confidence-meter" role="img" aria-label={`Baseline confidence ${percent} percent`}>
+      <div className="confidence-meter-header">
+        <span>Baseline confidence</span>
+        <strong>{percent}%</strong>
+      </div>
+      <div className="confidence-track">
+        <div
+          className={`confidence-fill ${percent >= 60 ? "high" : percent >= 45 ? "medium" : "low"}`}
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+      <p className="confidence-note">
+        How much evidence the deterministic analysis found to support this classification.
+      </p>
+    </div>
+  );
+}
+
+function ChipList({ label, values }) {
+  if (!values?.length) return null;
+  return (
+    <div className="dna-field">
+      <dt>{label}</dt>
+      <dd className="chip-list">
+        {values.map((value) => (
+          <span key={value} className="dna-chip">{value}</span>
+        ))}
+      </dd>
+    </div>
+  );
+}
+
+/**
+ * Problem DNA presentation — structured, explainable, honest about provenance.
+ */
+export function DnaPanel({ dna }) {
+  const [showSignals, setShowSignals] = useState(false);
+
+  if (!dna) {
+    return (
+      <section className="card dna-panel dna-panel-empty" aria-labelledby="dna-heading">
+        <span className="section-kicker">Problem Understanding</span>
+        <h2 id="dna-heading">Analysis pending</h2>
+        <p>
+          This problem has not been analyzed yet. Once Aikyra's deterministic
+          analysis runs, its problem area, urgency and relevant expertise will
+          appear here — clearly marked until a human validates them.
+        </p>
+      </section>
+    );
+  }
+
+  const banner = VALIDATION_BANNERS[dna.validation_status] ?? VALIDATION_BANNERS.pending_validation;
+  const signalEntries = Object.entries(dna.signals ?? {});
+
+  return (
+    <section className="card dna-panel" aria-labelledby="dna-heading">
+      <div className="dna-panel-header">
+        <div>
+          <span className="section-kicker">Problem Understanding</span>
+          <h2 id="dna-heading">Problem DNA</h2>
+        </div>
+        <DnaStatusBadge status={dna.validation_status} />
+      </div>
+
+      <p className={`dna-banner ${banner.className}`} role="note">{banner.title}</p>
+
+      <dl className="dna-grid">
+        <ChipList label="Problem area" values={[dna.primary_domain_label].filter(Boolean)} />
+        {dna.subdomain && <div className="dna-field"><dt>Sub-area</dt><dd>{dna.subdomain}</dd></div>}
+        {dna.problem_type && <div className="dna-field"><dt>Problem type</dt><dd>{dna.problem_type}</dd></div>}
+        <ChipList label="Affected stakeholders" values={dna.affected_stakeholders} />
+        <ChipList label="Expertise needed" values={dna.required_expertise} />
+        <ChipList label="Potential solution areas" values={dna.potential_solution_areas} />
+        <ChipList label="Key themes" values={dna.keywords} />
+      </dl>
+
+      <ConfidenceMeter score={dna.confidence_score} />
+
+      {signalEntries.length > 0 && (
+        <div className="dna-signals">
+          <button
+            type="button"
+            className="dna-signals-toggle"
+            aria-expanded={showSignals}
+            onClick={() => setShowSignals((s) => !s)}
+          >
+            Why this classification? {signalEntries.length} evidence group{signalEntries.length > 1 ? "s" : ""} {showSignals ? "▲" : "▼"}
+          </button>
+          {showSignals && (
+            <ul className="dna-signal-list">
+              {signalEntries.map(([domainKey, terms]) => (
+                <li key={domainKey}>
+                  <strong>{domainKey.replaceAll("_", " ")}</strong> matched: {terms.join(", ")}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      <footer className="dna-provenance">
+        Generated by deterministic rule-based analysis ({dna.analyzer_version}) —
+        not human-verified unless marked Validated above.
+      </footer>
+    </section>
+  );
+}

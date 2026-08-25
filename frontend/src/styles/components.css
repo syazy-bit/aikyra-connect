@@ -1434,3 +1434,564 @@ textarea.form-control {
     text-align: left;
   }
 }
+
+/* ============================================================
+   Phase 3 — Discovery Experience
+   ============================================================ */
+
+/* --- Toolbar: search + sort + filters toggle --- */
+.discovery-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  margin-bottom: var(--space-5);
+}
+
+.search-bar {
+  position: relative;
+  flex: 1 1 320px;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: var(--space-4);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.search-input {
+  width: 100%;
+  padding: var(--space-3) var(--space-10) var(--space-3) calc(var(--space-4) * 2 + 18px);
+  font-size: 0.975rem;
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-xs);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.search-input::placeholder { color: var(--text-muted); }
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--primary-subtle);
+}
+
+.search-clear {
+  position: absolute;
+  right: var(--space-3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: var(--bg-surface-subtle);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.search-clear:hover { background: var(--color-slate-200); color: var(--text-primary); }
+
+.sort-select-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.sort-prefix {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.sort-select {
+  padding: var(--space-2) var(--space-3);
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.filters-toggle { display: none; }
+
+/* --- Layout: rail + results --- */
+.discovery-layout {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.filters-rail {
+  position: sticky;
+  top: var(--space-5);
+  padding: var(--space-5);
+}
+
+.filters-title {
+  font-size: 1rem;
+  margin-bottom: var(--space-4);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.filter-controls { display: flex; flex-direction: column; gap: var(--space-5); }
+
+.filter-group {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+.filter-group legend {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  margin-bottom: var(--space-2);
+  padding: 0;
+}
+
+.filter-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.filter-option:hover { color: var(--text-primary); }
+.filter-option input[type="checkbox"] {
+  accent-color: var(--primary-default);
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+
+.filter-loading { font-size: 0.85rem; color: var(--text-muted); }
+
+.urgency-chip-row { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+
+.urgency-chip {
+  padding: 4px var(--space-3);
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-medium);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.urgency-chip.idle:hover { border-color: var(--border-strong); }
+.urgency-chip.active.chip-low,
+.urgency-chip.active.chip-medium { background: var(--color-teal-50); border-color: var(--color-teal-600); color: var(--color-teal-900); }
+.urgency-chip.active.chip-high { background: var(--color-amber-50); border-color: var(--amber-chip, var(--color-amber-500)); color: var(--color-amber-800); }
+.urgency-chip.active.chip-critical { background: var(--color-danger-50); border-color: var(--color-danger-600); color: var(--color-danger-700); }
+
+.filter-location-input {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  font-size: 0.9rem;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  background: var(--bg-surface);
+}
+.filter-location-input:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--primary-subtle);
+}
+
+.clear-filters-btn { width: 100%; }
+
+/* --- Active filter chips --- */
+.results-meta { min-height: 1.6em; }
+.results-count {
+  font-size: 0.925rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-3);
+}
+
+.active-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.active-chips-label {
+  font-size: 0.825rem;
+  color: var(--text-muted);
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 4px var(--space-2) 4px var(--space-3);
+  font-size: 0.825rem;
+  background: var(--bg-surface-accent);
+  border: 1px solid var(--color-teal-100);
+  border-radius: var(--radius-full);
+  color: var(--color-teal-900);
+}
+.filter-chip-group { opacity: 0.65; font-size: 0.75rem; }
+.filter-chip button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.filter-chip button:hover { background: var(--primary-subtle); }
+
+.clear-all-btn {
+  border: none;
+  background: none;
+  font-size: 0.825rem;
+  color: var(--text-brand);
+  cursor: pointer;
+  text-decoration: underline;
+  padding: var(--space-1);
+}
+.clear-all-btn:hover { color: var(--primary-hover); }
+
+/* --- Card DNA row --- */
+.card-dna-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.domain-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px var(--space-3);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  border-radius: var(--radius-full);
+  background: var(--bg-surface-accent);
+  border: 1px solid var(--color-teal-100);
+  color: var(--color-teal-900);
+}
+
+.urgency-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px var(--space-3);
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: var(--radius-full);
+  border: 1px solid transparent;
+}
+.urgency-badge.urgency-low { background: var(--color-slate-100); color: var(--color-slate-700); border-color: var(--border-subtle); }
+.urgency-badge.urgency-medium { background: var(--status-submitted-bg); color: var(--status-submitted-text); border-color: var(--status-submitted-border); }
+.urgency-badge.urgency-high { background: var(--color-amber-100); color: var(--color-amber-800); border-color: #fde68a; }
+.urgency-badge.urgency-critical { background: var(--color-danger-50); color: var(--color-danger-700); border-color: var(--color-danger-100); }
+
+.analysis-pending-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px var(--space-3);
+  font-size: 0.75rem;
+  font-weight: 500;
+  font-style: italic;
+  border-radius: var(--radius-full);
+  background: var(--bg-surface-subtle);
+  border: 1px dashed var(--border-medium);
+  color: var(--text-muted);
+}
+
+.card-description {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* --- Skeletons --- */
+.skeleton-card { pointer-events: none; }
+.skeleton-line {
+  height: 12px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--bg-surface-subtle) 25%, var(--color-slate-200) 50%, var(--bg-surface-subtle) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease infinite;
+  margin-bottom: var(--space-3);
+}
+.skeleton-line-tags { width: 45%; height: 20px; border-radius: var(--radius-full); }
+.skeleton-line-title { width: 80%; height: 18px; }
+.skeleton-line-body.short { width: 55%; }
+.skeleton-line-meta { width: 70%; margin-top: var(--space-4); margin-bottom: 0; }
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-line { animation: none; }
+}
+
+/* --- Mobile filter sheet --- */
+.filter-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: flex-end;
+}
+
+.filter-sheet {
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  background: var(--bg-surface);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  padding: var(--space-5);
+  box-shadow: var(--shadow-lg);
+}
+
+.filter-sheet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-4);
+}
+.filter-sheet-header h2 { font-size: 1.125rem; }
+.filter-sheet-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: var(--bg-surface-subtle);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.filter-sheet-footer {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+}
+.filter-sheet-footer .btn { flex: 1; }
+
+@media (max-width: 1023px) {
+  .discovery-layout { grid-template-columns: 1fr; }
+  .filters-rail { display: none; }
+  .filters-toggle { display: inline-flex; }
+}
+
+@media (min-width: 1024px) {
+  .filter-sheet-overlay { display: none !important; }
+}
+
+/* ============================================================
+   Phase 3 — Problem DNA panel (challenge detail)
+   ============================================================ */
+
+.dna-panel { padding: var(--space-6); }
+
+.dna-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+.dna-panel-header h2 { font-size: 1.35rem; }
+
+.dna-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px var(--space-3);
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+  border-radius: var(--radius-full);
+  border: 1px solid transparent;
+}
+.dna-banner-pending { background: var(--status-submitted-bg); color: var(--status-submitted-text); border-color: var(--status-submitted-border); }
+.dna-banner-review { background: var(--color-amber-100); color: var(--color-amber-800); border-color: #fde68a; }
+.dna-banner-validated { background: var(--color-success-100); color: var(--color-success-700); border-color: var(--color-success-100); }
+
+.dna-banner {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  padding: var(--space-3) var(--space-4);
+  border-left: 3px solid var(--border-focus);
+  background: var(--bg-canvas);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-5);
+}
+.dna-banner-pending { border-left-color: var(--color-info-600); background: var(--color-info-50); }
+.dna-banner-review { border-left-color: var(--color-amber-500); background: var(--color-amber-50); }
+.dna-banner-validated { border-left-color: var(--color-success-600); background: var(--color-success-50); }
+
+.dna-grid { display: flex; flex-direction: column; gap: var(--space-4); margin-bottom: var(--space-5); }
+
+.dna-field dt {
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: var(--space-1);
+}
+.dna-field dd { margin: 0; font-size: 0.95rem; color: var(--text-primary); }
+
+.chip-list { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+
+.dna-chip {
+  display: inline-block;
+  padding: 3px var(--space-3);
+  font-size: 0.8rem;
+  border-radius: var(--radius-full);
+  background: var(--bg-surface-subtle);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+.confidence-meter { margin-bottom: var(--space-4); }
+.confidence-meter-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-1);
+}
+.confidence-track {
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--bg-surface-subtle);
+  overflow: hidden;
+}
+.confidence-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width var(--transition-normal);
+}
+.confidence-fill.low { background: var(--color-slate-400); }
+.confidence-fill.medium { background: var(--color-teal-500); }
+.confidence-fill.high { background: var(--primary-default); }
+
+.confidence-note { font-size: 0.775rem; color: var(--text-muted); margin-top: var(--space-1); }
+
+.dna-signals { margin-bottom: var(--space-4); }
+.dna-signals-toggle {
+  border: none;
+  background: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-brand);
+  cursor: pointer;
+  padding: var(--space-1) 0;
+}
+.dna-signals-toggle:hover { color: var(--primary-hover); }
+
+.dna-signal-list {
+  margin-top: var(--space-2);
+  padding-left: var(--space-5);
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.dna-provenance {
+  font-size: 0.775rem;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-subtle);
+  padding-top: var(--space-3);
+}
+
+.dna-panel-empty h2 { font-size: 1.35rem; margin-bottom: var(--space-2); }
+.dna-panel-empty p { max-width: 46ch; }
+
+/* ============================================================
+   Phase 3 — Related challenges
+   ============================================================ */
+
+.related-section { margin-top: var(--space-8); margin-bottom: var(--space-8); }
+
+.related-title { font-size: 1.35rem; margin-bottom: var(--space-2); }
+
+.related-subtitle {
+  font-size: 0.925rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-5);
+  max-width: 60ch;
+}
+
+.related-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--space-4);
+}
+
+.related-card {
+  display: block;
+  height: 100%;
+  padding: var(--space-5);
+}
+
+.related-card:hover { text-decoration: none; }
+
+.related-card-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.related-card-title {
+  font-size: 1rem;
+  margin-bottom: var(--space-1);
+  color: var(--text-primary);
+}
+.related-card:hover .related-card-title { color: var(--text-brand); }
+
+.related-card-location {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: var(--space-3);
+}
+
+.related-reason {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  border-top: 1px solid var(--border-subtle);
+  padding-top: var(--space-3);
+  margin-top: auto;
+}

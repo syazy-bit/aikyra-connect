@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Numeric, String, func
+from sqlalchemy import DateTime, Enum, ForeignKey, Index, Numeric, String, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -91,3 +91,5 @@ class ProblemDna(Base):
         onupdate=func.now(),
         nullable=False,
     )
+
+    __table_args__ = (Index("ix_problem_dna_primary_domain", "primary_domain"),)

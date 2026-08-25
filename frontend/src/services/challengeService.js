@@ -4,41 +4,75 @@
 
 import { apiRequest } from "./api.js";
 
-/**
- * Fetch a paginated list of community challenges.
- * @param {Object} params
- * @param {number} [params.skip=0]
- * @param {number} [params.limit=20]
- * @returns {Promise<Array>} List of challenges ordered by created_at DESC
- */
-export async function getChallenges({ skip = 0, limit = 20 } = {}) {
-  const query = new URLSearchParams({
-    skip: String(skip),
-    limit: String(limit),
-  }).toString();
-
-  return apiRequest(`/api/challenges?${query}`);
+function buildQuery(params) {
+  const search = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "" ) return;
+    if (Array.isArray(value)) {
+      if (value.length) search.set(key, value.join(","));
+    } else {
+      search.set(key, String(value));
+    }
+  });
+  const qs = search.toString();
+  return qs ? `?${qs}` : "";
 }
 
 /**
- * Fetch a single challenge by its unique UUID.
- * @param {string} id - Challenge UUID
- * @returns {Promise<Object>} Challenge details
+ * Discovery search over community challenges.
+ * Backend returns an envelope: { items, total, skip, limit }.
+ * @param {Object} [params]
+ * @param {string}  [params.q]          Free-text search
+ * @param {string[]} [params.domains]   Taxonomy domain slugs (multi-select)
+ * @param {string[]} [params.urgencies] Urgency levels (multi-select)
+ * @param {string}  [params.location]   Location substring filter
+ * @param {"newest"|"oldest"|"urgency"|"relevance"} [params.sort]
+ * @param {number}  [params.skip]
+ * @param {number}  [params.limit]
+ * @returns {Promise<{items: Array, total: number, skip: number, limit: number}>}
+ */
+export async function listChallenges(params = {}) {
+  const { q, domains, urgencies, location, hasDna, sort, skip = 0, limit = 20 } = params;
+  return apiRequest(
+    `/api/challenges${buildQuery({ q, domains, urgencies, location, has_dna: hasDna, sort, skip, limit })}`
+  );
+}
+
+/**
+ * Fetch a single challenge by UUID (includes its Problem DNA summary,
+ * or dna: null when analysis has not run).
  */
 export async function getChallenge(id) {
-  if (!id) {
-    throw new Error("Challenge ID is required");
-  }
+  if (!id) throw new Error("Challenge ID is required");
   return apiRequest(`/api/challenges/${encodeURIComponent(id)}`);
 }
 
 /**
+ * Fetch the full Problem DNA for a challenge (signals, provenance, keywords…).
+ */
+export async function getDna(id) {
+  if (!id) throw new Error("Challenge ID is required");
+  return apiRequest(`/api/challenges/${encodeURIComponent(id)}/dna`);
+}
+
+/**
+ * Fetch deterministic related challenges derived from reliable Problem DNA.
+ * @returns {Promise<{items: Array}>} Empty when no reliable relationships exist.
+ */
+export async function getRelatedChallenges(id, limit = 4) {
+  return apiRequest(`/api/challenges/${encodeURIComponent(id)}/related?limit=${limit}`);
+}
+
+/**
+ * Fetch the controlled taxonomy (domains, subdomains, urgency levels).
+ * The taxonomy API is the single source of truth for discovery filters.
+ */
+export async function getTaxonomy() {
+  return apiRequest("/api/taxonomy");
+}
+
+/**
  * Submit a new community challenge.
- * @param {Object} payload
- * @param {string} payload.title
- * @param {string} payload.description
- * @param {string} payload.location
- * @returns {Promise<Object>} Created challenge with status 'submitted'
  */
 export async function createChallenge(payload) {
   return apiRequest("/api/challenges", {

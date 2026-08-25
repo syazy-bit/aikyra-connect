@@ -1,3 +1,4 @@
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, status
@@ -5,6 +6,11 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.schemas.challenge import ChallengeCreate, ChallengeResponse, ChallengeUpdate
+from app.schemas.discovery import (
+    ChallengeDetailResponse,
+    ChallengeListResponse,
+    DiscoveryQuery,
+)
 from app.services.challenge_service import ChallengeService
 
 router = APIRouter(prefix="/api/challenges", tags=["challenges"])
@@ -22,22 +28,22 @@ def create_challenge(
     return ChallengeResponse.model_validate(service.create_challenge(payload))
 
 
-@router.get("", response_model=list[ChallengeResponse])
-def list_challenges(
-    skip: int = Query(0, ge=0),
-    limit: int = Query(20, ge=1, le=100),
+@router.get("", response_model=ChallengeListResponse)
+def discover_challenges(
+    query: Annotated[DiscoveryQuery, Query()],
     service: ChallengeService = Depends(get_challenge_service),
-) -> list[ChallengeResponse]:
-    challenges = service.list_challenges(skip=skip, limit=limit)
-    return [ChallengeResponse.model_validate(c) for c in challenges]
+) -> ChallengeListResponse:
+    """Discovery search: pagination, full-text search, DNA filters, sorting."""
+    return service.discover(query)
 
 
-@router.get("/{challenge_id}", response_model=ChallengeResponse)
+@router.get("/{challenge_id}", response_model=ChallengeDetailResponse)
 def get_challenge(
     challenge_id: UUID,
     service: ChallengeService = Depends(get_challenge_service),
-) -> ChallengeResponse:
-    return ChallengeResponse.model_validate(service.get_challenge(challenge_id))
+) -> ChallengeDetailResponse:
+    """Single challenge with its Problem DNA summary (null when unanalyzed)."""
+    return service.get_challenge_detail(challenge_id)
 
 
 @router.patch("/{challenge_id}", response_model=ChallengeResponse)

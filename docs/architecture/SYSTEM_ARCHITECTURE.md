@@ -49,6 +49,23 @@ POST /challenges (frontend form)
   → GET /challenges/{id} returns challenge + Problem DNA (with validation status)
 ```
 
+## Request Flow (Phase 3 discovery)
+
+```
+GET /api/challenges?q=...&domains=a,b&urgencies=high&location=...&sort=relevance&skip&limit
+  → FastAPI validates query params (taxonomy slugs, enums, bounds)
+  → ChallengeService.discover()
+  → DiscoveryRepository: LEFT JOIN challenges ⟕ problem_dna,
+    full-text @@ websearch_to_tsquery on generated search_vector (GIN-indexed),
+    filters, deterministic ordering, single COUNT subquery (no N+1)
+  → Envelope response { items: [challenge + embedded dna summary], total, skip, limit }
+```
+
+Related-challenge recommendations (`GET /api/challenges/{id}/related`) are computed
+deterministically from reliable Problem DNA only (confidence ≥ 0.45), with human-readable
+reasons per suggestion. The taxonomy API (`GET /api/taxonomy`) is the single source of
+truth for frontend filter options.
+
 ## Deployment (later)
 
 Docker Compose with services: `frontend`, `backend`, `postgres`, `ollama`. Not set up yet.

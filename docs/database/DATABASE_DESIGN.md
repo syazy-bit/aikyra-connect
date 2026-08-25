@@ -27,7 +27,7 @@ A societal challenge reported by a citizen. Created by Alembic revision `dbefd13
 
 **Enum type `challenge_status`:** `submitted`, `under_review`, `validated`, `rejected`.
 
-**Indexes:** PK on `id`, `ix_challenges_status` on `status`, `ix_challenges_created_at` on `created_at` (listing order).
+**Indexes:** PK on `id`, `ix_challenges_status` on `status`, `ix_challenges_created_at` on `created_at` (listing order), and — added in Phase 3 — a generated `search_vector tsvector` column (`to_tsvector('english', title + description + location)`, always DB-maintained) with GIN index `ix_challenges_search_vector` powering full-text discovery search.
 
 ### `problem_dna`
 
@@ -56,6 +56,8 @@ Structured system-derived understanding of a challenge (revision `4140091755aa`)
 | `created_at` / `updated_at` | `TIMESTAMPTZ`             | NOT NULL, server defaults                              |
 
 Multi-valued attributes use JSONB arrays rather than child tables for now — queryable and GIN-indexable later without premature joins. Normalization into child tables is an evolution path if filtering requirements demand it.
+
+**Indexes:** PK on `id`, unique constraint on `challenge_id`, plus `ix_problem_dna_primary_domain` (btree, Phase 3) backing domain-filtered discovery queries.
 
 **Data-ownership distinction:** citizen input lives only in `challenges`; `generated_by` distinguishes deterministic/AI/human provenance; `validation_status` separates advisory data from human-confirmed truth.
 

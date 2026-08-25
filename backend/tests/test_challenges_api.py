@@ -102,7 +102,10 @@ def test_list_challenges_default_pagination(client):
         time.sleep(0.01)
     response = client.get("/api/challenges")
     assert response.status_code == 200
-    assert len(response.json()) == 3
+    body = response.json()
+    assert body["total"] == 3
+    assert body["skip"] == 0
+    assert len(body["items"]) == 3
 
 
 def test_list_challenges_custom_limit_and_skip(client):
@@ -111,8 +114,8 @@ def test_list_challenges_custom_limit_and_skip(client):
         time.sleep(0.01)
     page_one = client.get("/api/challenges?skip=0&limit=2").json()
     page_two = client.get("/api/challenges?skip=2&limit=2").json()
-    assert [c["title"] for c in page_one] == ["Challenge 4", "Challenge 3"]
-    assert [c["title"] for c in page_two] == ["Challenge 2", "Challenge 1"]
+    assert [c["title"] for c in page_one["items"]] == ["Challenge 4", "Challenge 3"]
+    assert [c["title"] for c in page_two["items"]] == ["Challenge 2", "Challenge 1"]
 
 
 def test_list_challenges_orders_by_created_at_desc(client):
@@ -120,7 +123,7 @@ def test_list_challenges_orders_by_created_at_desc(client):
     time.sleep(0.05)
     newer = _create(client, title="Newer challenge")
     response = client.get("/api/challenges")
-    titles = [c["title"] for c in response.json()]
+    titles = [c["title"] for c in response.json()["items"]]
     assert titles.index("Newer challenge") < titles.index("Older challenge")
     assert newer["created_at"] >= older["created_at"]
 

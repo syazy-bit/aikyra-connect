@@ -123,7 +123,7 @@ def test_rerunning_analysis_is_idempotent_and_regenerates(client):
 
     # Still exactly one DNA row per challenge (1:1).
     listing = client.get("/api/challenges").json()
-    assert len(listing) == 1
+    assert len(listing["items"]) == 1
     fetched = client.get(f"/api/challenges/{created['id']}/dna").json()
     assert fetched["primary_domain"] == first["dna"]["primary_domain"]
 
@@ -162,7 +162,7 @@ def test_existing_challenge_endpoints_unaffected(client):
     assert updated.status_code == 200
     listed = client.get("/api/challenges")
     assert listed.status_code == 200
-    assert len(listed.json()) == 1
+    assert len(listed.json()["items"]) == 1
 
 
 # --- Concurrent analyze race (unique constraint recovery) ---

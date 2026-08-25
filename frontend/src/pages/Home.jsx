@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "../context/RouterContext.jsx";
-import { getChallenges } from "../services/challengeService.js";
+import { listChallenges } from "../services/challengeService.js";
 import { ChallengeCard } from "../components/ChallengeCard.jsx";
 import { LoadingSpinner } from "../components/LoadingSpinner.jsx";
 
@@ -17,9 +17,9 @@ export function Home() {
         setLoading(true);
         setError(null);
         // Fetch latest 3 challenges
-        const data = await getChallenges({ skip: 0, limit: 3 });
+        const data = await listChallenges({ skip: 0, limit: 3 });
         if (mounted) {
-          setRecentChallenges(data || []);
+          setRecentChallenges(data?.items ?? []);
         }
       } catch (err) {
         if (mounted) {
