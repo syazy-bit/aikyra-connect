@@ -1,0 +1,41 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Node ---
+node_modules/
+dist/
+.vite/
+
+# --- Environment / secrets ---
+.env
+.env.*
+!.env.example
+
+# --- Databases ---
+*.db
+*.sqlite3
+
+# --- AI models / large artifacts ---
+ai/models/*.bin
+ai/models/*.safetensors
+*.pt
+*.onnx
+
+# --- IDE / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- Logs / coverage ---
+*.log
+coverage/
+htmlcov/
