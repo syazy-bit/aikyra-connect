@@ -23,6 +23,10 @@ class Settings:
     def __init__(self) -> None:
         self.database_url: str = os.getenv("DATABASE_URL", "")
         self.app_name: str = "Aikyra API"
+        # JWT authentication (Phase 4C)
+        self.jwt_secret_key: str = os.getenv("JWT_SECRET_KEY", "dev-secret-change-in-production")
+        self.jwt_algorithm: str = os.getenv("JWT_ALGORITHM", "HS256")
+        self.jwt_expire_minutes: int = int(os.getenv("JWT_EXPIRE_MINUTES", "30"))
 
 
 @lru_cache

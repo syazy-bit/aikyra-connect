@@ -16,3 +16,19 @@ class ConflictError(Exception):
     def __init__(self, message: str) -> None:
         self.message = message
         super().__init__(message)
+
+
+class NotAuthenticatedError(Exception):
+    """Request lacks valid authentication credentials (HTTP 401)."""
+
+    def __init__(self, message: str = "Not authenticated.") -> None:
+        self.message = message
+        super().__init__(message)
+
+
+class ForbiddenError(Exception):
+    """Authenticated but not authorized for this action (HTTP 403)."""
+
+    def __init__(self, message: str = "Forbidden.") -> None:
+        self.message = message
+        super().__init__(message)
