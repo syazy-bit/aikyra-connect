@@ -45,6 +45,7 @@ class InstitutionVerificationStatus(str, enum.Enum):
     """
 
     UNVERIFIED = "unverified"
+    PENDING_REVIEW = "pending_review"
     VERIFIED = "verified"
     REJECTED = "rejected"
     SUSPENDED = "suspended"

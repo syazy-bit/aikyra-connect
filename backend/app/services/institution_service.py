@@ -24,7 +24,12 @@ from app.schemas.institution import (
     InstitutionListItem,
     InstitutionResponse,
     InstitutionUpdate,
+    VerificationAction,
+    VerificationRequest,
 )
+
+from datetime import datetime, timezone
+
 
 # Normalization for service-level duplicate detection — byte-equivalent to
 # the `uq_institutions_name_normalized` index expression (case-fold, trim,
@@ -32,6 +37,30 @@ from app.schemas.institution import (
 # lookup is therefore authoritative; the DB index remains the race guard.
 _PUNCTUATION_PATTERN = re.compile(r"[^a-z0-9]+")
 _WHITESPACE_PATTERN = re.compile(r"\s+")
+
+
+# --- Verification state machine -------------------------------------------------
+# Maps each action to the set of current statuses from which it is allowed.
+_VALID_TRANSITIONS: dict[VerificationAction, set[InstitutionVerificationStatus]] = {
+    VerificationAction.SUBMIT_FOR_REVIEW: {
+        InstitutionVerificationStatus.UNVERIFIED,
+    },
+    VerificationAction.VERIFY: {
+        InstitutionVerificationStatus.PENDING_REVIEW,
+    },
+    VerificationAction.REJECT: {
+        InstitutionVerificationStatus.PENDING_REVIEW,
+    },
+    VerificationAction.RESUBMIT: {
+        InstitutionVerificationStatus.REJECTED,
+    },
+    VerificationAction.SUSPEND: {
+        InstitutionVerificationStatus.VERIFIED,
+    },
+    VerificationAction.REINSTATE: {
+        InstitutionVerificationStatus.SUSPENDED,
+    },
+}
 
 
 def normalize_institution_name(name: str) -> str:
@@ -166,6 +195,150 @@ class InstitutionService:
             raise ConflictError(_RACE_DUPLICATE_NAME_MESSAGE) from None
         self.db.refresh(updated)
         return updated
+
+    # --- Verification workflow ------------------------------------------------
+
+    def verify_institution(
+        self,
+        institution_id: UUID,
+        reviewer_user_id: UUID,
+        note: str | None = None,
+    ) -> Institution:
+        """Reviewer verifies a pending institution."""
+        institution = self.get_institution(institution_id)
+        self._assert_valid_transition(institution, VerificationAction.VERIFY)
+        now = datetime.now(timezone.utc)
+        updated = self.repository.update(
+            institution,
+            {
+                "verification_status": InstitutionVerificationStatus.VERIFIED,
+                "verified_by": reviewer_user_id,
+                "verified_at": now,
+                "verification_note": note,
+            },
+        )
+        self._commit()
+        self.db.refresh(updated)
+        return updated
+
+    def reject_institution(
+        self,
+        institution_id: UUID,
+        reviewer_user_id: UUID,
+        note: str | None = None,
+    ) -> Institution:
+        """Reviewer rejects a pending institution."""
+        institution = self.get_institution(institution_id)
+        self._assert_valid_transition(institution, VerificationAction.REJECT)
+        now = datetime.now(timezone.utc)
+        updated = self.repository.update(
+            institution,
+            {
+                "verification_status": InstitutionVerificationStatus.REJECTED,
+                "verified_by": reviewer_user_id,
+                "verified_at": now,
+                "verification_note": note,
+            },
+        )
+        self._commit()
+        self.db.refresh(updated)
+        return updated
+
+    def resubmit(
+        self,
+        institution_id: UUID,
+    ) -> Institution:
+        """Owner/representative resubmits a rejected institution for review."""
+        institution = self.get_institution(institution_id)
+        self._assert_valid_transition(institution, VerificationAction.RESUBMIT)
+        updated = self.repository.update(
+            institution,
+            {
+                "verification_status": InstitutionVerificationStatus.PENDING_REVIEW,
+                "verified_by": None,
+                "verified_at": None,
+                "verification_note": None,
+            },
+        )
+        self._commit()
+        self.db.refresh(updated)
+        return updated
+
+    def submit_for_review(
+        self,
+        institution_id: UUID,
+    ) -> Institution:
+        """Owner/representative submits an unverified institution for review."""
+        institution = self.get_institution(institution_id)
+        self._assert_valid_transition(institution, VerificationAction.SUBMIT_FOR_REVIEW)
+        updated = self.repository.update(
+            institution,
+            {
+                "verification_status": InstitutionVerificationStatus.PENDING_REVIEW,
+            },
+        )
+        self._commit()
+        self.db.refresh(updated)
+        return updated
+
+    def suspend_institution(
+        self,
+        institution_id: UUID,
+        reviewer_user_id: UUID,
+        note: str | None = None,
+    ) -> Institution:
+        """Reviewer suspends a verified institution."""
+        institution = self.get_institution(institution_id)
+        self._assert_valid_transition(institution, VerificationAction.SUSPEND)
+        now = datetime.now(timezone.utc)
+        updated = self.repository.update(
+            institution,
+            {
+                "verification_status": InstitutionVerificationStatus.SUSPENDED,
+                "verified_by": reviewer_user_id,
+                "verified_at": now,
+                "verification_note": note,
+            },
+        )
+        self._commit()
+        self.db.refresh(updated)
+        return updated
+
+    def reinstate_institution(
+        self,
+        institution_id: UUID,
+        reviewer_user_id: UUID,
+        note: str | None = None,
+    ) -> Institution:
+        """Reviewer reinstates a suspended institution."""
+        institution = self.get_institution(institution_id)
+        self._assert_valid_transition(institution, VerificationAction.REINSTATE)
+        now = datetime.now(timezone.utc)
+        updated = self.repository.update(
+            institution,
+            {
+                "verification_status": InstitutionVerificationStatus.VERIFIED,
+                "verified_by": reviewer_user_id,
+                "verified_at": now,
+                "verification_note": note,
+            },
+        )
+        self._commit()
+        self.db.refresh(updated)
+        return updated
+
+    def _assert_valid_transition(
+        self,
+        institution: Institution,
+        action: VerificationAction,
+    ) -> None:
+        """Raise ConflictError if the current status does not allow this action."""
+        allowed = _VALID_TRANSITIONS.get(action, set())
+        if institution.verification_status not in allowed:
+            raise ConflictError(
+                f"Cannot perform '{action.value}' on an institution with "
+                f"verification status '{institution.verification_status.value}'."
+            )
 
     # --- Listing ------------------------------------------------------------
 

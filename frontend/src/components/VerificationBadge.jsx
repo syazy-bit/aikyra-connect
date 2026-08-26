@@ -7,6 +7,11 @@ const VERIFICATION_MAP = {
     title:
       "This profile is human-entered and awaiting review by Aikyra. Verified institutions only participate in future matching.",
   },
+  pending_review: {
+    label: "Pending Review",
+    className: "verification-badge-pending",
+    title: "This profile has been submitted and is awaiting review.",
+  },
   verified: {
     label: "Verified",
     className: "verification-badge-verified",

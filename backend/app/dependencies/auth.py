@@ -84,8 +84,12 @@ def require_reviewer(
     Resolves membership from the database — never trusts JWT claims or
     client-supplied role.
 
+    Raises NotFoundError if the institution does not exist.
     Raises ForbiddenError if the user lacks the required membership.
     """
+    institution_repo = InstitutionRepository(db)
+    if institution_repo.get_by_id(institution_id) is None:
+        raise NotFoundError("Institution", institution_id)
     membership_repo = MembershipRepository(db)
     has_access = membership_repo.has_role(
         current_user.id,

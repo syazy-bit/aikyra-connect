@@ -335,3 +335,43 @@ class MembershipResponse(BaseModel):
     is_member: bool
     role: str | None = None
     membership_status: str | None = None
+
+
+class VerificationAction(str, enum.Enum):
+    SUBMIT_FOR_REVIEW = "submit_for_review"
+    VERIFY = "verify"
+    REJECT = "reject"
+    RESUBMIT = "resubmit"
+    SUSPEND = "suspend"
+    REINSTATE = "reinstate"
+
+
+class VerificationRequest(BaseModel):
+    """Payload for institution verification state transitions."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    action: VerificationAction
+    note: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("note")
+    @classmethod
+    def _validate_note(cls, value: str | None) -> str | None:
+        if value is not None:
+            value = value.strip()
+            if not value:
+                raise ValueError("must not be empty or whitespace")
+        return value
+
+
+class VerificationResponse(BaseModel):
+    """Response returned after a verification state transition."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    verification_status: InstitutionVerificationStatus
+    verification_note: str | None
+    verified_at: datetime | None
+    verified_by: UUID | None
+    updated_at: datetime

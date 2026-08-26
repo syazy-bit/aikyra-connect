@@ -5,9 +5,11 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.exceptions import ForbiddenError
+from app.core.exceptions import ForbiddenError, NotFoundError
 from app.dependencies.auth import get_current_user, require_owner_or_rep
 from app.models.user import User
+from app.repositories.institution_repository import InstitutionRepository
+from app.repositories.membership_repository import MembershipRepository
 from app.schemas.institution import (
     InstitutionCreate,
     InstitutionListQuery,
@@ -15,6 +17,9 @@ from app.schemas.institution import (
     InstitutionResponse,
     InstitutionUpdate,
     MembershipResponse,
+    VerificationAction,
+    VerificationRequest,
+    VerificationResponse,
 )
 from app.services.institution_service import InstitutionService
 
@@ -95,3 +100,89 @@ def update_institution(
     intentionally excluded from this payload.
     """
     return service.to_response(service.update_institution(institution_id, payload))
+
+
+_REVIEWER_ACTIONS = {
+    VerificationAction.VERIFY,
+    VerificationAction.REJECT,
+    VerificationAction.SUSPEND,
+    VerificationAction.REINSTATE,
+}
+
+_OWNER_ACTIONS = {
+    VerificationAction.SUBMIT_FOR_REVIEW,
+    VerificationAction.RESUBMIT,
+}
+
+
+@router.patch(
+    "/{institution_id}/verification",
+    response_model=VerificationResponse,
+)
+def update_verification(
+    institution_id: UUID,
+    payload: VerificationRequest,
+    current_user: User = Depends(get_current_user),
+    service: InstitutionService = Depends(get_institution_service),
+) -> VerificationResponse:
+    """Verification workflow endpoint.
+
+    Enforces a server-side state machine. Authorization is resolved from
+    the database-backed membership system.
+
+    Owner/representative actions: submit_for_review, resubmit.
+    Reviewer actions: verify, reject, suspend, reinstate.
+    """
+    membership_repo = MembershipRepository(service.db)
+
+    institution_repo = InstitutionRepository(service.db)
+    if institution_repo.get_by_id(institution_id) is None:
+        raise NotFoundError("Institution", institution_id)
+
+    if payload.action in _REVIEWER_ACTIONS:
+        if not membership_repo.has_role(
+            current_user.id, institution_id, ("reviewer",)
+        ):
+            raise ForbiddenError(
+                "You do not have reviewer permissions for this institution."
+            )
+    elif payload.action in _OWNER_ACTIONS:
+        if not membership_repo.has_role(
+            current_user.id, institution_id, ("owner", "representative")
+        ):
+            raise ForbiddenError(
+                "You do not have permission to modify this institution."
+            )
+
+    action = payload.action
+    note = payload.note
+
+    if action == VerificationAction.SUBMIT_FOR_REVIEW:
+        institution = service.submit_for_review(institution_id)
+    elif action == VerificationAction.VERIFY:
+        institution = service.verify_institution(
+            institution_id, reviewer_user_id=current_user.id, note=note
+        )
+    elif action == VerificationAction.REJECT:
+        institution = service.reject_institution(
+            institution_id, reviewer_user_id=current_user.id, note=note
+        )
+    elif action == VerificationAction.RESUBMIT:
+        institution = service.resubmit(institution_id)
+    elif action == VerificationAction.SUSPEND:
+        institution = service.suspend_institution(
+            institution_id, reviewer_user_id=current_user.id, note=note
+        )
+    elif action == VerificationAction.REINSTATE:
+        institution = service.reinstate_institution(
+            institution_id, reviewer_user_id=current_user.id, note=note
+        )
+
+    return VerificationResponse(
+        id=institution.id,
+        verification_status=institution.verification_status,
+        verification_note=institution.verification_note,
+        verified_at=institution.verified_at,
+        verified_by=institution.verified_by,
+        updated_at=institution.updated_at,
+    )
