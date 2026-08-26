@@ -4,7 +4,7 @@
 
 Aikyra is a collaborative societal innovation platform that connects citizens and communities with universities, students, researchers, industry, startups, and government stakeholders — transforming real-world societal challenges into measurable solutions.
 
-> **Status:** Initial scaffolding phase. The repository structure, documentation, and minimal runnable skeletons exist. No product features are implemented yet.
+> **Status:** Phase 4A complete (Institution Foundation). Implemented so far: challenge engine (Phase 1), Problem DNA deterministic classifier (Phase 2), challenge discovery (Phase 3), and institution/university foundation — registration, capability profiles, listing, verification-ready trust fields (Phase 4A). Authentication, matching, and project workflows are later phases.
 
 ---
 
@@ -75,11 +75,14 @@ aikyra/
 
 ## Development Roadmap
 
-- **Phase 0 (current):** Repository scaffolding, documentation, minimal runnable skeleton.
-- **Phase 1 (MVP):** Challenge submission → storage → AI analysis → Problem DNA generation → challenge display → university matching recommendations.
-- **Phase 2:** Validation workflows, collaboration spaces, project lifecycle tracking.
-- **Phase 3:** Prototyping support, deployment tracking, impact measurement dashboards.
-- **Later:** Leaflet maps, pgvector semantic search, Docker deployment.
-
+- **Phase 0 (complete):** Repository scaffolding, documentation, runnable skeleton.
+- **Phase 1 (complete):** Challenge submission → storage → retrieval.
+- **Phase 2 (complete):** Deterministic rule-based Problem DNA classifier (explicit baseline; AI-augmentation is a future seam).
+- **Phase 3 (complete):** Challenge discovery — search, filters, sorting, pagination, related challenges.
+- **Phase 4A (complete):** Institution foundation — registration (`POST /api/institutions`), capability profiles (domains from the taxonomy API + validated JSONB capability sections), listing/detail/edit UI, lifecycle + verification trust fields. Institutions register as *unverified*; only verified+active institutions will participate in matching.
+- **Phase 4B (next):** Deterministic explainable matching — given a Problem DNA, rank capable institutions with visible score breakdowns (rule-based baseline; no embeddings yet).
+- **Phase 4C:** University challenge workflow — express interest / accept challenges.
+- **Phase 4D:** Faculty/student team workflow.
+- **Later:** Industry collaboration, project lifecycle, impact measurement, government dashboard, authentication & RBAC, notifications.
 
 See [docs/development/BRANCHING_STRATEGY.md](docs/development/BRANCHING_STRATEGY.md) and [docs/development/DEVELOPMENT_SETUP.md](docs/development/DEVELOPMENT_SETUP.md) to get started.

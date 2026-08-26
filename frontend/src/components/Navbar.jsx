@@ -52,6 +52,9 @@ export function Navbar() {
           <Link href="/challenges" className={`nav-link ${currentPath === "/challenges" ? "active" : ""}`} onClick={closeMobileMenu}>
             Community Challenges
           </Link>
+          <Link href="/institutions" className={`nav-link ${currentPath.startsWith("/institutions") ? "active" : ""}`} onClick={closeMobileMenu}>
+            Institutions
+          </Link>
           {mobileMenuOpen && (
             <button
               type="button"

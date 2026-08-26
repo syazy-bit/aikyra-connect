@@ -49,6 +49,18 @@ export function RouterProvider({ children }) {
       };
     }
 
+    if (path === "/institutions") return { name: "institutions", params: {}, query: params };
+    if (path === "/institutions/register") return { name: "institution-register", params: {}, query: {} };
+
+    const institutionDetailMatch = path.match(/^\/institutions\/([^/]+)$/);
+    if (institutionDetailMatch) {
+      return {
+        name: "institution-detail",
+        params: { id: institutionDetailMatch[1] },
+        query: params,
+      };
+    }
+
     return { name: "not-found", params: {}, query: {} };
   };
 

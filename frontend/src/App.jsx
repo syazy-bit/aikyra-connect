@@ -6,6 +6,9 @@ import { Home } from "./pages/Home.jsx";
 import { ReportProblem } from "./pages/ReportProblem.jsx";
 import { Challenges } from "./pages/Challenges.jsx";
 import { ChallengeDetail } from "./pages/ChallengeDetail.jsx";
+import { Institutions } from "./pages/Institutions.jsx";
+import { InstitutionDetail } from "./pages/InstitutionDetail.jsx";
+import { RegisterInstitution } from "./pages/RegisterInstitution.jsx";
 
 function AppContent() {
   const { route } = useRouter();
@@ -20,6 +23,12 @@ function AppContent() {
         return <Challenges />;
       case "challenge-detail":
         return <ChallengeDetail />;
+      case "institutions":
+        return <Institutions />;
+      case "institution-detail":
+        return <InstitutionDetail />;
+      case "institution-register":
+        return <RegisterInstitution />;
       default:
         return (
           <main className="container-narrow" style={{ padding: "var(--space-16) var(--space-4)", textAlign: "center" }}>

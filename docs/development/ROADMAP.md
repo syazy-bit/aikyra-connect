@@ -111,59 +111,59 @@ Build:
 
 ---
 
-## Phase 4 — Intelligent Matching
+## Phase 4 — Institutions & Matching (re-scoped into sub-phases)
 
-**Priority: MVP / CORE DIFFERENTIATOR**
+### Phase 4A — Institution Foundation ✅ COMPLETE
 
 Build:
 
-- University expertise profiles
-- Faculty expertise
-- Research areas
-- Laboratory capabilities
-- Previous projects
-- Industry capabilities
+- `Institution` entity (not "University") with `institution_type`: university / college / research_institute / innovation_hub
+- Registration API: `POST /api/institutions` → always starts `active` + `unverified`
+- Capability model: taxonomy-referenced `domains` + fixed-section validated JSONB `capabilities` (departments, expertise, research areas, technologies, facilities, incubation, prototyping, project experience, collaboration modes) — all human-entered
+- Listing/search/filters/pagination: `GET /api/institutions`
+- Profile retrieval + partial update: `GET/PATCH /api/institutions/{id}`
+- Duplicate protection: service-level normalized check (409) + normalized DB unique index
+- Trust fields: `verification_status`, `verification_note`, `verified_at`, `verified_by` (transitions wait for the auth phase)
+- Frontend: `/institutions`, `/institutions/:id`, `/institutions/register` (+ edit mode)
 
-Matching factors:
+**DoD:** An institution can register, appear in a filterable listing, be viewed and edited; duplicate names/websites are rejected with 409; all trust/lifecycle fields are established for future verification. No matching logic.
 
-- Semantic similarity
-- Expertise match
-- Research capability
-- Laboratory capability
-- Previous work
-- Geographic relevance
+### Phase 4B — Deterministic Intelligent Matching (next)
 
-**IMPORTANT — Explainable match score. Never a black box. Example:**
+Given Problem DNA, rank **active + verified** institutions with an explainable, rule-based factor breakdown:
 
 ```
 94% Match
-
-+32  Expertise
-+25  Research
-+20  Laboratory
-+10  Previous Projects
-+ 7  Geographic relevance
++32  Domain overlap        (institutions.domains × DNA primary/secondary)
++25  Expertise match       (capabilities.expertise × DNA required_expertise)
++20  Research capability   (research_areas/technologies × solution_areas)
++10  Track record          (project_experience)
++7   Geographic relevance  (location tokens)
++5   Facilities            (facilities × solution needs)
 ```
 
-**DoD:** For any challenge, the system returns ranked matches, each with a visible factor breakdown summing to the score.
+Deterministic baseline first; embeddings/pgvector only as a later additive layer. Every score must show its visible breakdown summing to the total.
 
 ---
 
-## Phase 5 — University Workspace
+## Phase 5 — University Challenge Workflow (absorbs old workspace scope; split into 4C/4D)
 
-**Priority: MVP**
+### Phase 4C — Challenge Interest & Acceptance
 
 Build:
 
-- Assigned challenges
-- Challenge review
-- Accept/reject
-- Faculty mentor
-- Student team
+- `challenge_interests` — institution expresses interest in a specific challenge
+- Institution review / accept flow
+- Assigned-challenge view
+
+### Phase 4D — Faculty / Student Team Workflow
+
+Build:
+
+- Faculty mentor assignment
+- Student team formation
 - Proposal
 - Project creation
-
-**DoD:** A university can review an assigned challenge, accept it, form a team, and create a project from it.
 
 ---
 

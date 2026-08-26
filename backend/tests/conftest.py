@@ -15,6 +15,7 @@ load_dotenv(BACKEND_DIR / ".env")
 
 from app.core.database import Base, get_db  # noqa: E402
 import app.models.challenge  # noqa: F401,E402  # register models on Base.metadata
+import app.models.institution  # noqa: F401,E402
 from app.main import app  # noqa: E402
 
 
@@ -71,6 +72,7 @@ def _clean_tables(_create_schema):
     yield
     with test_engine.begin() as conn:
         conn.execute(text('TRUNCATE TABLE "challenges" CASCADE'))
+        conn.execute(text('TRUNCATE TABLE "institutions" CASCADE'))
 
 
 @pytest.fixture
