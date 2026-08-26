@@ -79,8 +79,8 @@ aikyra/
 - **Phase 1 (complete):** Challenge submission → storage → retrieval.
 - **Phase 2 (complete):** Deterministic rule-based Problem DNA classifier (explicit baseline; AI-augmentation is a future seam).
 - **Phase 3 (complete):** Challenge discovery — search, filters, sorting, pagination, related challenges.
-- **Phase 4A (complete):** Institution foundation — registration (`POST /api/institutions`), capability profiles (domains from the taxonomy API + validated JSONB capability sections), listing/detail/edit UI, lifecycle + verification trust fields. Institutions register as *unverified*; only verified+active institutions will participate in matching.
-- **Phase 4B (next):** Deterministic explainable matching — given a Problem DNA, rank capable institutions with visible score breakdowns (rule-based baseline; no embeddings yet).
+- **Phase 4A (complete):** Institution foundation — registration (`POST /api/institutions`), capability profiles (domains from the taxonomy API + validated JSONB capability sections), listing/detail/edit UI, lifecycle + verification trust fields. Institutions register as *unverified*; only verified+active institutions participate in matching.
+- **Phase 4B (complete):** Deterministic institution matching — `GET /api/challenges/{id}/matches` ranks verified+active institutions against Problem DNA with a transparent weighted breakdown and human-readable reasons; "Recommended institutions" panel on the challenge detail page; dev-only seed script (`backend/scripts/seed_phase4b.py`). Rule-based baseline (`rule-match-baseline-v1`) — no embeddings/AI.
 - **Phase 4C:** University challenge workflow — express interest / accept challenges.
 - **Phase 4D:** Faculty/student team workflow.
 - **Later:** Industry collaboration, project lifecycle, impact measurement, government dashboard, authentication & RBAC, notifications.

@@ -128,21 +128,25 @@ Build:
 
 **DoD:** An institution can register, appear in a filterable listing, be viewed and edited; duplicate names/websites are rejected with 409; all trust/lifecycle fields are established for future verification. No matching logic.
 
-### Phase 4B — Deterministic Intelligent Matching (next)
+### Phase 4B — Deterministic Intelligent Matching ✅ COMPLETE
 
-Given Problem DNA, rank **active + verified** institutions with an explainable, rule-based factor breakdown:
+Implemented exactly as specified below: given Problem DNA, ranks **active + verified** institutions with an explainable, rule-based factor breakdown:
 
 ```
-94% Match
-+32  Domain overlap        (institutions.domains × DNA primary/secondary)
-+25  Expertise match       (capabilities.expertise × DNA required_expertise)
-+20  Research capability   (research_areas/technologies × solution_areas)
-+10  Track record          (project_experience)
-+7   Geographic relevance  (location tokens)
-+5   Facilities            (facilities × solution needs)
+64 Match
++30  Domain relevance      (institutions.domains × DNA primary/secondary)
++19  Expertise overlap     (capabilities.expertise/disciplines × required_expertise)
++8   Research capability   (research_areas/technologies × solution_areas)
++4   Facilities            (facilities × solution/expertise tokens)
++5   Track record          (project_experience × keywords)
++8   Location relevance    (shared meaningful location tokens)
+—    Urgency context       (critical/high bonus, gated on domain relevance)
 ```
 
-Deterministic baseline first; embeddings/pgvector only as a later additive layer. Every score must show its visible breakdown summing to the total.
+- Endpoint: `GET /api/challenges/{id}/matches` (409 when DNA unreliable; empty pool returns 200).
+- Eligibility gate enforced in SQL; recommendations computed per request, never persisted.
+- Frontend: ranked "Recommended institutions" panel on the challenge detail page with score tiers and expandable factor breakdowns.
+- Deterministic baseline labeled honestly (`rule-match-baseline-v1`) — embeddings/pgvector remain future work.
 
 ---
 

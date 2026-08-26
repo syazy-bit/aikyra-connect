@@ -64,6 +64,17 @@ export async function getRelatedChallenges(id, limit = 4) {
 }
 
 /**
+ * Deterministic institution recommendations for a challenge's Problem DNA
+ * (Phase 4B rule-based baseline — explainable, never persisted).
+ * Rejects with ApiError(409) when the DNA is not reliable enough to match on.
+ */
+export async function getChallengeMatches(id, limit = 6) {
+  return apiRequest(
+    `/api/challenges/${encodeURIComponent(id)}/matches?limit=${limit}`
+  );
+}
+
+/**
  * Fetch the controlled taxonomy (domains, subdomains, urgency levels).
  * The taxonomy API is the single source of truth for discovery filters.
  */

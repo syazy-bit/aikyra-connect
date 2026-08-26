@@ -10,6 +10,7 @@ import { LoadingSpinner } from "../components/LoadingSpinner.jsx";
 import { Alert } from "../components/Alert.jsx";
 import { DnaPanel } from "../components/DnaPanel.jsx";
 import { RelatedChallenges } from "../components/RelatedChallenges.jsx";
+import { RecommendedInstitutions } from "../components/RecommendedInstitutions.jsx";
 
 export function ChallengeDetail() {
   const { route } = useRouter();
@@ -269,6 +270,12 @@ export function ChallengeDetail() {
 
         {/* Related problems — only rendered when reliable relationships exist */}
         <RelatedChallenges items={related} />
+
+        {/* Recommended institutions — deterministic baseline over Problem DNA;
+            self-silencing when DNA is unreliable or no matches exist */}
+        <div style={{ marginTop: "var(--space-6)" }}>
+          <RecommendedInstitutions challengeId={challengeId} />
+        </div>
       </div>
     </div>
   );

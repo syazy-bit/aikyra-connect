@@ -2171,3 +2171,145 @@ textarea.form-control {
 @media (max-width: 768px) {
   .capabilities-grid { grid-template-columns: 1fr; }
 }
+
+/* ==========================================================================
+   Phase 4B — Recommended institutions (deterministic matching baseline)
+   Reuses existing design tokens only.
+   ========================================================================== */
+
+.match-section { margin-top: var(--space-6); }
+
+.match-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.match-card { padding: var(--space-5); }
+
+.match-card-main {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.match-rank {
+  font-family: var(--font-display);
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: var(--bg-surface-subtle);
+  border-radius: var(--radius-full);
+  min-width: 2.25rem;
+  height: 2.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.match-card-body { flex: 1; min-width: 0; }
+
+.match-card-title {
+  font-family: var(--font-display);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-decoration: none;
+}
+.match-card-title:hover { color: var(--text-brand); }
+
+.match-card-location {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  margin: var(--space-1) 0 var(--space-2) 0;
+}
+
+.match-breakdown { margin-top: var(--space-3); }
+
+.match-breakdown > summary {
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-brand);
+}
+.match-breakdown[open] > summary { margin-bottom: var(--space-2); }
+
+.match-breakdown-list {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-3);
+  background: var(--bg-surface-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.match-breakdown-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+.match-breakdown-list li.is-zero { opacity: 0.55; }
+
+.match-factor-label { font-weight: 600; }
+
+.match-factor-points { text-align: right; }
+
+.match-factor-detail { color: var(--text-muted); font-style: normal; }
+
+.match-score-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: auto;
+}
+
+.match-score {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--primary-default);
+}
+
+.match-tier {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+.match-tier.tier-strong {
+  background: var(--color-success-50);
+  color: var(--color-success-700);
+  border: 1px solid var(--color-success-100);
+}
+.match-tier.tier-promising {
+  background: var(--color-amber-50);
+  color: var(--color-amber-800);
+  border: 1px solid var(--color-amber-100);
+}
+.match-tier.tier-exploratory {
+  background: var(--bg-surface-subtle);
+  color: var(--text-muted);
+  border: 1px solid var(--border-subtle);
+}
+
+@media (max-width: 640px) {
+  .match-card-main { flex-direction: column; }
+  .match-score-block {
+    flex-direction: row;
+    align-self: flex-start;
+    margin-left: 0;
+  }
+}

@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse
 
 from app.api.challenges import router as challenges_router
 from app.api.institutions import router as institutions_router
+from app.api.matches import router as matches_router
 from app.api.problem_dna import router as problem_dna_router
 from app.api.related import router as related_router
 from app.api.taxonomy import router as taxonomy_router
@@ -41,3 +42,4 @@ app.include_router(problem_dna_router)
 app.include_router(related_router)
 app.include_router(taxonomy_router)
 app.include_router(institutions_router)
+app.include_router(matches_router)

@@ -90,6 +90,8 @@ A higher-education institution, research institute or innovation hub participati
 
 No foreign keys exist yet — institutions are independent roots, like challenges were in Phase 1. Challenge↔institution relationships (interest, acceptance, projects) are deliberately deferred to their own phases so capability data, recommendations and workflow state are never conflated.
 
+**Matching note (Phase 4B):** there is intentionally **no matches table**. Recommendations (`GET /api/challenges/{id}/matches`) are computed per request from current `problem_dna` × `institutions` rows by a pure scoring function, so rankings can never go stale. The Phase 4A indexes (GIN on `domains`, btrees on status/verification) are sufficient at current scale; no matching-specific index was added.
+
 ## Data Access Conventions
 
 1. Models live in `backend/app/models`, accessed only via `backend/app/repositories`.
