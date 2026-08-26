@@ -11,7 +11,12 @@ from app.models.institution import (
     InstitutionStatus,
     InstitutionVerificationStatus,
 )
+from app.models.institution_membership import (
+    InstitutionMembershipRole,
+    InstitutionMembershipStatus,
+)
 from app.repositories.institution_repository import InstitutionRepository
+from app.repositories.membership_repository import MembershipRepository
 from app.schemas.institution import (
     InstitutionCreate,
     InstitutionListQuery,
@@ -69,10 +74,13 @@ class InstitutionService:
     def __init__(self, db: Session) -> None:
         self.db = db
         self.repository = InstitutionRepository(db)
+        self.membership_repository = MembershipRepository(db)
 
     # --- Registration ---------------------------------------------------
 
-    def create_institution(self, payload: InstitutionCreate) -> Institution:
+    def create_institution(
+        self, payload: InstitutionCreate, owner_user_id: UUID
+    ) -> Institution:
         self._ensure_name_available(payload.name)
         self._ensure_website_host_available(payload.website)
         try:
@@ -86,15 +94,18 @@ class InstitutionService:
                     "verification_status": InstitutionVerificationStatus.UNVERIFIED,
                 }
             )
+            self.membership_repository.create(
+                {
+                    "user_id": owner_user_id,
+                    "institution_id": institution.id,
+                    "role": InstitutionMembershipRole.OWNER,
+                    "status": InstitutionMembershipStatus.ACTIVE,
+                }
+            )
             self._commit()
+        except ConflictError:
+            raise
         except IntegrityError:
-            # Race-safe duplicate protection: the application-level
-            # pre-checks above are inherently race-prone. The database
-            # unique constraint (uq_institutions_name_normalized) is the
-            # final source of truth — a lost race surfaces here as an
-            # IntegrityError and must translate into a domain-level 409
-            # conflict, never a 500. The transaction is rolled back before
-            # the ConflictError propagates.
             self.db.rollback()
             raise ConflictError(_RACE_DUPLICATE_NAME_MESSAGE) from None
         self.db.refresh(institution)
@@ -107,6 +118,24 @@ class InstitutionService:
         if institution is None:
             raise NotFoundError("Institution", institution_id)
         return institution
+
+    # --- Membership -------------------------------------------------------
+
+    def get_membership(
+        self, user_id: UUID, institution_id: UUID
+    ) -> dict | None:
+        membership = self.membership_repository.get_membership(
+            user_id, institution_id
+        )
+        if membership is None:
+            return None
+        role = membership.role.value if hasattr(membership.role, "value") else membership.role
+        status_val = membership.status.value if hasattr(membership.status, "value") else membership.status
+        return {
+            "is_member": True,
+            "role": role,
+            "membership_status": status_val,
+        }
 
     # --- Update -----------------------------------------------------------
 
@@ -133,9 +162,6 @@ class InstitutionService:
             updated = self.repository.update(institution, data)
             self._commit()
         except IntegrityError:
-            # Same race protection as registration: a concurrent create can
-            # take the normalized name between the pre-check above and this
-            # write. Roll back cleanly and report a structured conflict.
             self.db.rollback()
             raise ConflictError(_RACE_DUPLICATE_NAME_MESSAGE) from None
         self.db.refresh(updated)

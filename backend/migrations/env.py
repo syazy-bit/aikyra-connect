@@ -17,6 +17,7 @@ import app.models.challenge  # noqa: F401,E402  # register models on Base.metada
 import app.models.institution  # noqa: F401,E402
 import app.models.problem_dna  # noqa: F401,E402
 import app.models.user  # noqa: F401,E402
+import app.models.institution_membership  # noqa: F401,E402
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

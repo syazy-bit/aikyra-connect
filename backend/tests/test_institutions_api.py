@@ -33,9 +33,9 @@ MINIMAL_PAYLOAD = {
 }
 
 
-def _create(client, payload=None, **overrides):
+def _create(c, payload=None, **overrides):
     body = {**(payload or VALID_PAYLOAD), **overrides}
-    response = client.post("/api/institutions", json=body)
+    response = c.post("/api/institutions", json=body)
     assert response.status_code == 201, response.json()
     return response.json()
 
@@ -43,8 +43,8 @@ def _create(client, payload=None, **overrides):
 # --- Registration -------------------------------------------------------------
 
 
-def test_register_full_institution(client):
-    body = _create(client)
+def test_register_full_institution(auth_client):
+    body = _create(auth_client)
     assert body["name"] == VALID_PAYLOAD["name"]
     assert body["institution_type"] == "university"
     assert body["status"] == "active"
@@ -60,8 +60,8 @@ def test_register_full_institution(client):
     assert body["capabilities"]["departments"] == ["Civil Engineering", "Computer Science"]
 
 
-def test_register_minimal_institution_defaults(client):
-    body = _create(client, MINIMAL_PAYLOAD)
+def test_register_minimal_institution_defaults(auth_client):
+    body = _create(auth_client, MINIMAL_PAYLOAD)
     assert body["description"] is None
     assert body["website"] is None
     assert body["contact_email"] is None
@@ -71,27 +71,27 @@ def test_register_minimal_institution_defaults(client):
     assert body["verification_status"] == "unverified"
 
 
-def test_register_returns_domain_labels(client):
-    body = _create(client)
+def test_register_returns_domain_labels(auth_client):
+    body = _create(auth_client)
     labels = {ref["key"]: ref["label"] for ref in body["domain_labels"]}
     assert labels["water_sanitation"] == "Water & Sanitation"
     assert labels["agriculture"] == "Agriculture"
 
 
-def test_register_dedupes_domains_preserving_order(client):
+def test_register_dedupes_domains_preserving_order(auth_client):
     body = _create(
-        client,
+        auth_client,
         domains=["agriculture", "education", "agriculture", "education"],
     )
     assert body["domains"] == ["agriculture", "education"]
 
 
-def test_register_all_institution_types(client):
+def test_register_all_institution_types(auth_client):
     for i, inst_type in enumerate(
         ["university", "college", "research_institute", "innovation_hub"]
     ):
         body = _create(
-            client,
+            auth_client,
             name=f"Type Test Institution {i}",
             institution_type=inst_type,
             website=None,
@@ -102,51 +102,53 @@ def test_register_all_institution_types(client):
 # --- Field / format validation -------------------------------------------------
 
 
-def test_register_missing_required_fields(client):
+def test_register_missing_required_fields(auth_client):
     for field in ("name", "institution_type", "location"):
         payload = {k: v for k, v in MINIMAL_PAYLOAD.items() if k != field}
-        response = client.post("/api/institutions", json=payload)
+        response = auth_client.post("/api/institutions", json=payload)
         assert response.status_code == 422
 
 
-def test_register_blank_name_rejected(client):
-    response = client.post("/api/institutions", json={**MINIMAL_PAYLOAD, "name": "   "})
+def test_register_blank_name_rejected(auth_client):
+    response = auth_client.post(
+        "/api/institutions", json={**MINIMAL_PAYLOAD, "name": "   "}
+    )
     assert response.status_code == 422
 
 
-def test_register_name_too_long(client):
-    response = client.post(
+def test_register_name_too_long(auth_client):
+    response = auth_client.post(
         "/api/institutions", json={**MINIMAL_PAYLOAD, "name": "x" * 251}
     )
     assert response.status_code == 422
 
 
-def test_register_invalid_institution_type(client):
-    response = client.post(
+def test_register_invalid_institution_type(auth_client):
+    response = auth_client.post(
         "/api/institutions",
         json={**MINIMAL_PAYLOAD, "institution_type": "industry"},
     )
     assert response.status_code == 422
 
 
-def test_register_invalid_website_rejected(client):
+def test_register_invalid_website_rejected(auth_client):
     for bad in ("rit.ac.in", "ftp://rit.ac.in", "https://", "not a url"):
-        response = client.post(
+        response = auth_client.post(
             "/api/institutions", json={**MINIMAL_PAYLOAD, "website": bad}
         )
         assert response.status_code == 422, bad
 
 
-def test_register_invalid_email_rejected(client):
+def test_register_invalid_email_rejected(auth_client):
     for bad in ("plainaddress", "missing@tld", "@no-local.com", "user@"):
-        response = client.post(
+        response = auth_client.post(
             "/api/institutions", json={**MINIMAL_PAYLOAD, "contact_email": bad}
         )
         assert response.status_code == 422, bad
 
 
-def test_register_description_too_long(client):
-    response = client.post(
+def test_register_description_too_long(auth_client):
+    response = auth_client.post(
         "/api/institutions", json={**MINIMAL_PAYLOAD, "description": "x" * 5001}
     )
     assert response.status_code == 422
@@ -155,44 +157,45 @@ def test_register_description_too_long(client):
 # --- Taxonomy validation --------------------------------------------------------
 
 
-def test_register_unknown_domain_rejected(client):
-    response = client.post(
-        "/api/institutions", json={**MINIMAL_PAYLOAD, "domains": ["quantum_mechanics"]}
+def test_register_unknown_domain_rejected(auth_client):
+    response = auth_client.post(
+        "/api/institutions",
+        json={**MINIMAL_PAYLOAD, "domains": ["quantum_mechanics"]},
     )
     assert response.status_code == 422
     assert "unknown domain 'quantum_mechanics'" in response.json()["detail"][0]["msg"]
 
 
-def test_register_domains_come_from_taxonomy_api(client):
+def test_register_domains_come_from_taxonomy_api(auth_client, client):
     """Domain slugs accepted by registration must be exactly the taxonomy
     API's domain keys — institutions never depend on hardcoded lists."""
     taxonomy = client.get("/api/taxonomy").json()
     taxonomy_keys = [d["key"] for d in taxonomy["domains"]]
-    created = _create(client, domains=taxonomy_keys)
+    created = _create(auth_client, domains=taxonomy_keys)
     assert sorted(created["domains"]) == sorted(taxonomy_keys)
 
 
 # --- Capabilities validation ------------------------------------------------------
 
 
-def test_register_unknown_capability_section_rejected(client):
-    response = client.post(
+def test_register_unknown_capability_section_rejected(auth_client):
+    response = auth_client.post(
         "/api/institutions",
         json={**MINIMAL_PAYLOAD, "capabilities": {"labz": ["Mystery Lab"]}},
     )
     assert response.status_code == 422
 
 
-def test_register_capability_item_must_be_string(client):
-    response = client.post(
+def test_register_capability_item_must_be_string(auth_client):
+    response = auth_client.post(
         "/api/institutions",
         json={**MINIMAL_PAYLOAD, "capabilities": {"expertise": [42]}},
     )
     assert response.status_code == 422
 
 
-def test_register_capability_section_size_cap(client):
-    response = client.post(
+def test_register_capability_section_size_cap(auth_client):
+    response = auth_client.post(
         "/api/institutions",
         json={
             **MINIMAL_PAYLOAD,
@@ -202,9 +205,9 @@ def test_register_capability_section_size_cap(client):
     assert response.status_code == 422
 
 
-def test_register_capability_items_stripped_and_deduped(client):
+def test_register_capability_items_stripped_and_deduped(auth_client):
     body = _create(
-        client,
+        auth_client,
         capabilities={"expertise": ["  IoT  ", "IoT", "", "   ", "GIS"]},
     )
     assert body["capabilities"]["expertise"] == ["IoT", "GIS"]
@@ -213,32 +216,32 @@ def test_register_capability_items_stripped_and_deduped(client):
 # --- Duplicate protection ------------------------------------------------------------
 
 
-def test_duplicate_exact_name_conflict(client):
-    _create(client)
-    response = client.post("/api/institutions", json=VALID_PAYLOAD)
+def test_duplicate_exact_name_conflict(auth_client):
+    _create(auth_client)
+    response = auth_client.post("/api/institutions", json=VALID_PAYLOAD)
     assert response.status_code == 409
     detail = response.json()["detail"]
     assert "already exists" in detail
     assert "id:" in detail
 
 
-def test_duplicate_normalized_name_conflict(client):
-    _create(client)
+def test_duplicate_normalized_name_conflict(auth_client):
+    _create(auth_client)
     for variant in (
         "regional institute of TECHNOLOGY",
         "Regional Institute of Technology.",
         "  regional-institute-of-technology  ",
     ):
-        response = client.post(
+        response = auth_client.post(
             "/api/institutions",
             json={**MINIMAL_PAYLOAD, "name": variant},
         )
         assert response.status_code == 409, variant
 
 
-def test_same_name_different_type_still_conflict(client):
-    _create(client)
-    response = client.post(
+def test_same_name_different_type_still_conflict(auth_client):
+    _create(auth_client)
+    response = auth_client.post(
         "/api/institutions",
         json={**VALID_PAYLOAD, "institution_type": "college"},
     )
@@ -281,10 +284,10 @@ def test_database_unique_index_guard(client, db_session):
     assert raised
 
 
-def test_distinct_names_accepted(client):
-    _create(client)
+def test_distinct_names_accepted(auth_client):
+    _create(auth_client)
     body = _create(
-        client, name="Coastal Engineering College", website=None
+        auth_client, name="Coastal Engineering College", website=None
     )
     assert body["name"] == "Coastal Engineering College"
 
@@ -292,7 +295,7 @@ def test_distinct_names_accepted(client):
 # --- IntegrityError race protection (H1 regression) ---------------------------
 
 
-def test_concurrent_registration_race_returns_409(client, monkeypatch):
+def test_concurrent_registration_race_returns_409(auth_client, monkeypatch):
     """Regression (review finding H1): when a concurrent registration wins
     the race — its row lands between this request's duplicate pre-check and
     its insert — the database unique constraint fires and the API must
@@ -303,10 +306,6 @@ def test_concurrent_registration_race_returns_409(client, monkeypatch):
     original_create = InstitutionRepository.create
 
     def racing_create(self, data):
-        # Simulate request A committing first: insert a row whose NORMALIZED
-        # name equals the incoming payload's (raw spelling differs, so the
-        # pre-check has already passed) and flush it to the DB before the
-        # real insert runs.
         self.db.add(
             Institution(
                 id=uuid.uuid4(),
@@ -322,7 +321,7 @@ def test_concurrent_registration_race_returns_409(client, monkeypatch):
 
     monkeypatch.setattr(InstitutionRepository, "create", racing_create)
 
-    response = client.post(
+    response = auth_client.post(
         "/api/institutions",
         json={
             "name": "race condition university",
@@ -338,14 +337,14 @@ def test_concurrent_registration_race_returns_409(client, monkeypatch):
     assert "Institution" not in body["detail"]  # domain message, not raw DB error
 
 
-def test_concurrent_rename_race_returns_409(client, monkeypatch):
+def test_concurrent_rename_race_returns_409(auth_client, monkeypatch):
     """The same race protection must apply on the update path: another
     institution takes the target normalized name between the PATCH
     pre-check and the write."""
     from app.models.institution import Institution, InstitutionType
     from app.repositories.institution_repository import InstitutionRepository
 
-    created = _create(client)
+    created = _create(auth_client)
 
     original_update = InstitutionRepository.update
 
@@ -365,17 +364,18 @@ def test_concurrent_rename_race_returns_409(client, monkeypatch):
 
     monkeypatch.setattr(InstitutionRepository, "update", racing_update)
 
-    response = client.patch(
-        f"/api/institutions/{created['id']}", json={"name": "Taken Name University"}
+    response = auth_client.patch(
+        f"/api/institutions/{created['id']}",
+        json={"name": "Taken Name University"},
     )
 
     assert response.status_code == 409
     assert "already exists" in response.json()["detail"]
 
 
-def test_duplicate_website_host_conflict(client):
-    _create(client)
-    response = client.post(
+def test_duplicate_website_host_conflict(auth_client):
+    _create(auth_client)
+    response = auth_client.post(
         "/api/institutions",
         json={**MINIMAL_PAYLOAD, "website": "http://RIT.ac.in/index.html"},
     )
@@ -383,24 +383,24 @@ def test_duplicate_website_host_conflict(client):
     assert "already exists" in response.json()["detail"]
 
 
-def test_similar_but_distinct_websites_accepted(client):
-    _create(client)
-    body = _create(client, name="Other University", website="https://rit2.ac.in")
+def test_similar_but_distinct_websites_accepted(auth_client):
+    _create(auth_client)
+    body = _create(auth_client, name="Other University", website="https://rit2.ac.in")
     assert body["website"] == "https://rit2.ac.in"
 
 
-def test_patch_to_existing_other_name_conflicts(client):
-    first = _create(client)
-    second = _create(client, MINIMAL_PAYLOAD)
-    response = client.patch(
+def test_patch_to_existing_other_name_conflicts(auth_client):
+    first = _create(auth_client)
+    second = _create(auth_client, MINIMAL_PAYLOAD)
+    response = auth_client.patch(
         f"/api/institutions/{second['id']}", json={"name": first["name"]}
     )
     assert response.status_code == 409
 
 
-def test_patch_keeping_own_name_allowed(client):
-    created = _create(client)
-    response = client.patch(
+def test_patch_keeping_own_name_allowed(auth_client):
+    created = _create(auth_client)
+    response = auth_client.patch(
         f"/api/institutions/{created['id']}",
         json={"name": "Regional Institute of Technology!"},
     )
@@ -411,8 +411,8 @@ def test_patch_keeping_own_name_allowed(client):
 # --- Retrieval --------------------------------------------------------------------------
 
 
-def test_get_institution_by_id(client):
-    created = _create(client)
+def test_get_institution_by_id(auth_client, client):
+    created = _create(auth_client)
     response = client.get(f"/api/institutions/{created['id']}")
     assert response.status_code == 200
     body = response.json()
@@ -436,8 +436,8 @@ def test_get_malformed_uuid_returns_422(client):
 # --- Listing: pagination / search / filters / sorting -------------------------------------
 
 
-def test_list_envelope_shape(client):
-    _create(client)
+def test_list_envelope_shape(auth_client, client):
+    _create(auth_client)
     body = client.get("/api/institutions").json()
     assert set(body.keys()) == {"items", "total", "skip", "limit"}
     assert body["total"] == 1
@@ -448,9 +448,9 @@ def test_list_envelope_shape(client):
     assert "domain_labels" in item
 
 
-def test_list_pagination_and_ordering(client):
+def test_list_pagination_and_ordering(auth_client, client):
     for i in range(5):
-        _create(client, name=f"Institution {i}", website=None)
+        _create(auth_client, name=f"Institution {i}", website=None)
         time.sleep(0.01)
     page_one = client.get("/api/institutions?skip=0&limit=2").json()
     page_two = client.get("/api/institutions?skip=2&limit=2").json()
@@ -471,9 +471,9 @@ def test_list_pagination_validation(client):
     assert client.get("/api/institutions?skip=-1").status_code == 422
 
 
-def test_list_search_matches_name_description_location(client):
-    _create(client)  # Regional Institute…, Anantapur, rural technology
-    _create(client, MINIMAL_PAYLOAD)
+def test_list_search_matches_name_description_location(auth_client, client):
+    _create(auth_client)  # Regional Institute…, Anantapur, rural technology
+    _create(auth_client, MINIMAL_PAYLOAD)
 
     by_name = client.get("/api/institutions?q=regional").json()
     assert by_name["total"] == 1
@@ -490,11 +490,11 @@ def test_list_search_matches_name_description_location(client):
     assert no_match["total"] == 0
 
 
-def test_list_sort_options(client):
-    older = _create(client, name="Alpha College", location="Old Town", website=None)
+def test_list_sort_options(auth_client, client):
+    older = _create(auth_client, name="Alpha College", location="Old Town", website=None)
     time.sleep(0.05)
     newer = _create(
-        client, name="Beta University", location="New Town",
+        auth_client, name="Beta University", location="New Town",
         website=None,
     )
 
@@ -511,9 +511,9 @@ def test_list_sort_options(client):
     assert missing_q.status_code == 422
 
 
-def test_list_filter_by_type(client):
-    _create(client)
-    _create(client, MINIMAL_PAYLOAD)
+def test_list_filter_by_type(auth_client, client):
+    _create(auth_client)
+    _create(auth_client, MINIMAL_PAYLOAD)
 
     universities = client.get("/api/institutions?types=university").json()
     assert universities["total"] == 1
@@ -527,9 +527,9 @@ def test_list_filter_by_type(client):
     assert invalid.status_code == 422
 
 
-def test_list_filter_by_domain(client):
-    _create(client)
-    _create(client, MINIMAL_PAYLOAD, domains=["education"])
+def test_list_filter_by_domain(auth_client, client):
+    _create(auth_client)
+    _create(auth_client, MINIMAL_PAYLOAD, domains=["education"])
 
     filtered = client.get("/api/institutions?domains=water_sanitation").json()
     assert filtered["total"] == 1
@@ -543,9 +543,9 @@ def test_list_filter_by_domain(client):
     assert "unknown domain 'astrology'" in unknown.json()["detail"][0]["msg"]
 
 
-def test_list_combined_filters_and_search(client):
-    _create(client)
-    _create(client, MINIMAL_PAYLOAD, domains=["education"])
+def test_list_combined_filters_and_search(auth_client, client):
+    _create(auth_client)
+    _create(auth_client, MINIMAL_PAYLOAD, domains=["education"])
 
     combined = client.get(
         "/api/institutions?q=regional&types=university&domains=water_sanitation"
@@ -561,9 +561,9 @@ def test_list_combined_filters_and_search(client):
 # --- PATCH ----------------------------------------------------------------------------------
 
 
-def test_patch_all_field_groups(client):
-    created = _create(client)
-    response = client.patch(
+def test_patch_all_field_groups(auth_client):
+    created = _create(auth_client)
+    response = auth_client.patch(
         f"/api/institutions/{created['id']}",
         json={
             "name": "Renamed Institute of Technology",
@@ -592,61 +592,62 @@ def test_patch_all_field_groups(client):
     assert [ref["label"] for ref in body["domain_labels"]] == ["Energy"]
 
 
-def test_patch_empty_payload_returns_unchanged(client):
-    created = _create(client)
+def test_patch_empty_payload_returns_unchanged(auth_client, client):
+    created = _create(auth_client)
     before = client.get(f"/api/institutions/{created['id']}").json()
     time.sleep(0.02)
-    response = client.patch(f"/api/institutions/{created['id']}", json={})
+    response = auth_client.patch(f"/api/institutions/{created['id']}", json={})
     assert response.status_code == 200
     after = response.json()
     assert after["name"] == before["name"]
     assert after["capabilities"] == before["capabilities"]
 
 
-def test_patch_updated_at_advances(client):
-    created = _create(client)
+def test_patch_updated_at_advances(auth_client):
+    created = _create(auth_client)
     original = datetime.fromisoformat(created["updated_at"])
     time.sleep(0.02)
-    updated = client.patch(
+    updated = auth_client.patch(
         f"/api/institutions/{created['id']}", json={"description": "Fresh text."}
     ).json()
     assert datetime.fromisoformat(updated["updated_at"]) > original
 
 
-def test_patch_nonexistent_returns_404(client):
-    response = client.patch(
+def test_patch_nonexistent_returns_404(auth_client):
+    response = auth_client.patch(
         f"/api/institutions/{uuid.uuid4()}", json={"name": "Ghost University"}
     )
     assert response.status_code == 404
 
 
-def test_patch_rejects_invalid_values(client):
-    created = _create(client)
+def test_patch_rejects_invalid_values(auth_client):
+    created = _create(auth_client)
     assert (
-        client.patch(
+        auth_client.patch(
             f"/api/institutions/{created['id']}",
             json={"institution_type": "industry"},
         ).status_code
         == 422
     )
     assert (
-        client.patch(
-            f"/api/institutions/{created['id']}", json={"domains": ["fake_domain"]}
+        auth_client.patch(
+            f"/api/institutions/{created['id']}",
+            json={"domains": ["fake_domain"]},
         ).status_code
         == 422
     )
     assert (
-        client.patch(
+        auth_client.patch(
             f"/api/institutions/{created['id']}", json={"website": "nope"}
         ).status_code
         == 422
     )
 
 
-def test_patch_cannot_change_verification_or_lifecycle(client):
-    """Trust/workflow fields are excluded from the public update schema."""
-    created = _create(client)
-    response = client.patch(
+def test_patch_cannot_change_verification_or_lifecycle(auth_client):
+    """Trust/workflow fields are rejected by extra='forbid' on InstitutionUpdate."""
+    created = _create(auth_client)
+    response = auth_client.patch(
         f"/api/institutions/{created['id']}",
         json={
             "verification_status": "verified",
@@ -655,13 +656,8 @@ def test_patch_cannot_change_verification_or_lifecycle(client):
             "verification_note": "self-approved",
         },
     )
-    assert response.status_code == 200
-    body = response.json()
-    assert body["verification_status"] == "unverified"
-    assert body["status"] == "active"
-    assert body["verified_at"] is None
-    assert body["verified_by"] is None
-    assert body["verification_note"] is None
+    assert response.status_code == 422
+    assert "extra" in str(response.json()).lower() or "forbidden" in str(response.json()).lower()
 
 
 # --- Phase 1–3 backward compatibility ----------------------------------------------------------
@@ -695,7 +691,7 @@ def test_phase_1_3_flows_unaffected(client):
     assert health.status_code == 200
 
 
-def test_challenge_discovery_does_not_leak_institutions(client):
-    _create(client)
+def test_challenge_discovery_does_not_leak_institutions(auth_client, client):
+    _create(auth_client)
     challenges = client.get("/api/challenges").json()
     assert challenges["total"] == 0

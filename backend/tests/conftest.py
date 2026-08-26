@@ -17,6 +17,7 @@ from app.core.database import Base, get_db  # noqa: E402
 import app.models.challenge  # noqa: F401,E402  # register models on Base.metadata
 import app.models.institution  # noqa: F401,E402
 import app.models.user  # noqa: F401,E402
+import app.models.institution_membership  # noqa: F401,E402
 from app.main import app  # noqa: E402
 
 
@@ -68,30 +69,21 @@ def _create_schema():
     test_engine.dispose()
 
 
-@pytest.fixture()
-def db_session(_create_schema):
-    """Provide a raw Session bound to the test database for direct DB manipulation."""
-    from sqlalchemy.orm import sessionmaker
-
-    TestSession = sessionmaker(bind=test_engine)
-    session = TestSession()
-    try:
-        yield session
-    finally:
-        session.close()
-
-
 @pytest.fixture(autouse=True)
 def _clean_tables(_create_schema):
     yield
     with test_engine.begin() as conn:
+        # Truncate in FK-dependency order: memberships depend on users and
+        # institutions, so truncate memberships first.
+        conn.execute(text('TRUNCATE TABLE "institution_memberships" CASCADE'))
         conn.execute(text('TRUNCATE TABLE "users" CASCADE'))
         conn.execute(text('TRUNCATE TABLE "challenges" CASCADE'))
         conn.execute(text('TRUNCATE TABLE "institutions" CASCADE'))
 
 
 @pytest.fixture
-def db_session() -> Generator[Session, None, None]:
+def db_session(_create_schema) -> Generator[Session, None, None]:
+    """Provide a raw Session bound to the test database for direct DB manipulation."""
     session = TestSessionLocal()
     try:
         yield session
@@ -112,4 +104,68 @@ def client(db_session: Session):
 
     with TestClient(app) as test_client:
         yield test_client
+    app.dependency_overrides.clear()
+
+
+def _auth_header(token: str) -> dict[str, str]:
+    """Build an Authorization header from a bearer token."""
+    return {"Authorization": f"Bearer {token}"}
+
+
+def _register_and_login(c, email: str, password: str, full_name: str) -> str:
+    """Register a user, log in, and return the bearer token."""
+    c.post(
+        "/api/auth/register",
+        json={"email": email, "password": password, "full_name": full_name},
+    )
+    login = c.post(
+        "/api/auth/login", json={"email": email, "password": password}
+    )
+    return login.json()["access_token"]
+
+
+@pytest.fixture
+def auth_client(db_session: Session):
+    """Authenticated client: a registered + logged-in test user.
+
+    Creates its own TestClient so it does not share headers with other
+    auth fixtures.
+    """
+    from fastapi.testclient import TestClient
+
+    def override_get_db() -> Generator[Session, None, None]:
+        try:
+            yield db_session
+        finally:
+            pass
+
+    app.dependency_overrides[get_db] = override_get_db
+    c = TestClient(app)
+    token = _register_and_login(c, "auth@aikyra.dev", "password123", "Auth Test User")
+    c.headers.update(_auth_header(token))
+    yield c
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def reviewer_client(db_session: Session):
+    """Authenticated client: a second registered + logged-in test user.
+
+    Creates its own TestClient so it does not share headers with auth_client.
+    """
+    from fastapi.testclient import TestClient
+
+    def override_get_db() -> Generator[Session, None, None]:
+        try:
+            yield db_session
+        finally:
+            pass
+
+    app.dependency_overrides[get_db] = override_get_db
+    c = TestClient(app)
+    token = _register_and_login(
+        c, "reviewer@aikyra.dev", "password123", "Reviewer Test User"
+    )
+    c.headers.update(_auth_header(token))
+    yield c
     app.dependency_overrides.clear()

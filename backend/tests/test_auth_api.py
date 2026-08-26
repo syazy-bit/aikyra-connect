@@ -360,16 +360,22 @@ def test_challenge_endpoints_unaffected(client):
     assert listed.json()["total"] == 1
 
 
-def test_institution_endpoints_unaffected(client):
-    """Institution CRUD still works without authentication (Checkpoint 2 adds auth)."""
+def test_institution_endpoints_unaffected(client, auth_client):
+    """Institution CRUD works with auth (Checkpoint 2) and reads remain public."""
     institution_payload = {
         "name": "Regional Institute of Technology",
         "institution_type": "university",
         "location": "Anantapur, Andhra Pradesh",
     }
-    created = client.post("/api/institutions", json=institution_payload)
+    created = auth_client.post("/api/institutions", json=institution_payload)
     assert created.status_code == 201
 
     listed = client.get("/api/institutions")
     assert listed.status_code == 200
     assert listed.json()["total"] == 1
+
+    get_one = client.get(f"/api/institutions/{created.json()['id']}")
+    assert get_one.status_code == 200
+
+    unauthed = client.post("/api/institutions", json=institution_payload)
+    assert unauthed.status_code == 401

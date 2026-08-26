@@ -87,6 +87,8 @@ class CapabilityProfile(BaseModel):
 
 
 class InstitutionCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     name: str = Field(min_length=1, max_length=250)
     institution_type: InstitutionType
     description: str | None = Field(default=None, max_length=5000)
@@ -160,7 +162,11 @@ class InstitutionUpdate(BaseModel):
     `verification_note`, `verified_at`, `verified_by`) are intentionally
     excluded — they are trust/workflow fields owned by reviewers with roles
     in a later phase.
+
+    Unknown fields are rejected to prevent mass-assignment of trust fields.
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     name: str | None = Field(default=None, min_length=1, max_length=250)
     institution_type: InstitutionType | None = None
@@ -321,3 +327,11 @@ class InstitutionListQuery(BaseModel):
             return None
         value = value.strip()
         return value or None
+
+
+class MembershipResponse(BaseModel):
+    """Response for the authenticated user's membership status on an institution."""
+
+    is_member: bool
+    role: str | None = None
+    membership_status: str | None = None
