@@ -8,6 +8,7 @@ from app.api.matches import router as matches_router
 from app.api.problem_dna import router as problem_dna_router
 from app.api.related import router as related_router
 from app.api.taxonomy import router as taxonomy_router
+from app.api.teams import router as teams_router
 from app.core.exceptions import (
     ConflictError,
     ForbiddenError,
@@ -67,3 +68,4 @@ app.include_router(related_router)
 app.include_router(taxonomy_router)
 app.include_router(institutions_router)
 app.include_router(matches_router)
+app.include_router(teams_router)

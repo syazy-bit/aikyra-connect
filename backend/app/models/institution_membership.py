@@ -13,6 +13,8 @@ class InstitutionMembershipRole(str, enum.Enum):
     OWNER = "owner"
     REPRESENTATIVE = "representative"
     REVIEWER = "reviewer"
+    FACULTY = "faculty"
+    STUDENT = "student"
 
 
 class InstitutionMembershipStatus(str, enum.Enum):

@@ -75,6 +75,8 @@ def _clean_tables(_create_schema):
     with test_engine.begin() as conn:
         # Truncate in FK-dependency order: memberships depend on users and
         # institutions, so truncate memberships first.
+        conn.execute(text('TRUNCATE TABLE "team_memberships" CASCADE'))
+        conn.execute(text('TRUNCATE TABLE "teams" CASCADE'))
         conn.execute(text('TRUNCATE TABLE "institution_memberships" CASCADE'))
         conn.execute(text('TRUNCATE TABLE "users" CASCADE'))
         conn.execute(text('TRUNCATE TABLE "challenges" CASCADE'))
@@ -169,3 +171,46 @@ def reviewer_client(db_session: Session):
     c.headers.update(_auth_header(token))
     yield c
     app.dependency_overrides.clear()
+
+
+# --- Helpers for team tests ----------------------------------------------------
+
+
+def _create_institution(c, **overrides):
+    """Create an institution via the API (returns JSON)."""
+    payload = {
+        "name": "Test Institution",
+        "institution_type": "university",
+        "location": "Test Location",
+        **overrides,
+    }
+    response = c.post("/api/institutions", json=payload)
+    assert response.status_code == 201, response.json()
+    return response.json()
+
+
+def _create_challenge(c, **overrides):
+    """Create a challenge via the API (returns JSON)."""
+    payload = {
+        "title": "Test Challenge",
+        "description": "Test challenge description for team tests.",
+        "location": "Test Location",
+        **overrides,
+    }
+    response = c.post("/api/challenges", json=payload)
+    assert response.status_code == 201, response.json()
+    return response.json()
+
+
+def _create_team(c, institution_id, challenge_id, **overrides):
+    """Create a team via the API (returns JSON)."""
+    payload = {
+        "institution_id": institution_id,
+        "challenge_id": challenge_id,
+        "name": "Test Team",
+        "description": "Test team description.",
+        **overrides,
+    }
+    response = c.post("/api/teams", json=payload)
+    assert response.status_code == 201, response.json()
+    return response.json()

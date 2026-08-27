@@ -34,15 +34,24 @@ def upgrade() -> None:
         "CREATE TYPE institution_verification_status_new AS ENUM "
         "('unverified', 'pending_review', 'verified', 'rejected', 'suspended')"
     )
-    # Step 2: Alter the column to use the new enum type.
+    # Step 2: Drop the default before altering the column type.
+    op.execute(
+        "ALTER TABLE institutions ALTER COLUMN verification_status DROP DEFAULT"
+    )
+    # Step 3: Alter the column to use the new enum type.
     op.execute(
         "ALTER TABLE institutions ALTER COLUMN verification_status "
         "TYPE institution_verification_status_new "
         "USING verification_status::text::institution_verification_status_new"
     )
-    # Step 3: Drop the old enum type.
+    # Step 4: Re-add the default with the new type.
+    op.execute(
+        "ALTER TABLE institutions ALTER COLUMN verification_status "
+        "SET DEFAULT 'unverified'::institution_verification_status_new"
+    )
+    # Step 5: Drop the old enum type.
     op.execute("DROP TYPE institution_verification_status")
-    # Step 4: Rename the replacement to the original name.
+    # Step 6: Rename the replacement to the original name.
     op.execute(
         "ALTER TYPE institution_verification_status_new "
         "RENAME TO institution_verification_status"

@@ -15,6 +15,7 @@ from app.core.exceptions import ForbiddenError, NotFoundError, NotAuthenticatedE
 from app.models.user import User
 from app.repositories.institution_repository import InstitutionRepository
 from app.repositories.membership_repository import MembershipRepository
+from app.repositories.team_repository import TeamMembershipRepository, TeamRepository
 from app.services.auth_service import AuthService
 
 
@@ -99,5 +100,55 @@ def require_reviewer(
     if not has_access:
         raise ForbiddenError(
             "You do not have reviewer permissions for this institution."
+        )
+    return current_user
+
+
+def require_team_member(
+    team_id: UUID = Path(),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> User:
+    """Authorization dependency: requires an ACTIVE team membership.
+
+    Resolves membership from the database — never trusts JWT claims or
+    client-supplied role.
+
+    Raises NotFoundError if the team does not exist.
+    Raises ForbiddenError if the user lacks an active membership on the team.
+    """
+    team_repo = TeamRepository(db)
+    if team_repo.get_by_id(team_id) is None:
+        raise NotFoundError("Team", team_id)
+    membership_repo = TeamMembershipRepository(db)
+    membership = membership_repo.get_active_membership(team_id, current_user.id)
+    if membership is None:
+        raise ForbiddenError(
+            "You are not an active member of this team."
+        )
+    return current_user
+
+
+def require_team_lead(
+    team_id: UUID = Path(),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> User:
+    """Authorization dependency: requires ACTIVE team lead membership.
+
+    Resolves membership from the database — never trusts JWT claims or
+    client-supplied role.
+
+    Raises NotFoundError if the team does not exist.
+    Raises ForbiddenError if the user is not the active lead of the team.
+    """
+    team_repo = TeamRepository(db)
+    if team_repo.get_by_id(team_id) is None:
+        raise NotFoundError("Team", team_id)
+    membership_repo = TeamMembershipRepository(db)
+    membership = membership_repo.get_lead_membership(team_id)
+    if membership is None or membership.user_id != current_user.id:
+        raise ForbiddenError(
+            "You must be the team lead to perform this action."
         )
     return current_user
