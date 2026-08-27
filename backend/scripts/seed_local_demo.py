@@ -30,6 +30,13 @@ from app.models.institution import (
     InstitutionType,
     InstitutionVerificationStatus,
 )
+from app.models.institution_membership import (
+    InstitutionMembershipRole,
+    InstitutionMembershipStatus,
+)
+from app.repositories.membership_repository import MembershipRepository
+from app.repositories.user_repository import UserRepository
+from app.services.auth_service import pwd_context
 from app.services.challenge_service import ChallengeService
 from app.services.problem_dna_service import ProblemDnaService
 
@@ -193,6 +200,31 @@ EXTRA_CHALLENGE = {
     "location": "Guwahati, Assam",
 }
 
+# --- Demo users and memberships for Phase 4C local testing ---------------
+DEMO_USERS = [
+    {
+        "email": "reviewer@aikyra.dev",
+        "password": "reviewer123",
+        "full_name": "Demo Reviewer",
+    },
+    {
+        "email": "owner@adtu.dev",
+        "password": "owner123",
+        "full_name": "ADTU Demo Owner",
+    },
+]
+
+DEMO_MEMBERSHIPS = [
+    {
+        "email": "owner@adtu.dev",
+        "role": InstitutionMembershipRole.OWNER,
+    },
+    {
+        "email": "reviewer@aikyra.dev",
+        "role": InstitutionMembershipRole.REVIEWER,
+    },
+]
+
 
 class _Payload:
     """Minimal stand-in for the create schema used by
@@ -275,6 +307,67 @@ def main() -> None:
                 f"[challenge] created: {challenge.title[:60]} "
                 f"[{dna.primary_domain} / conf={dna.confidence_score}]"
             )
+
+        # --- 4. Demo users and memberships (Phase 4C) -----------------------
+        def _ensure_user(db, email: str, password: str, full_name: str):
+            repo = UserRepository(db)
+            user = repo.get_by_email(email)
+            if user is not None:
+                return user, False
+            user = repo.create(
+                {
+                    "email": email.lower(),
+                    "hashed_password": pwd_context.hash(password),
+                    "full_name": full_name,
+                }
+            )
+            return user, True
+
+        def _ensure_membership(db, user, institution, role):
+            repo = MembershipRepository(db)
+            membership = repo.get_membership(user.id, institution.id)
+            if membership is not None:
+                return membership, False
+            membership = repo.create(
+                {
+                    "user_id": user.id,
+                    "institution_id": institution.id,
+                    "role": role,
+                    "status": InstitutionMembershipStatus.ACTIVE,
+                }
+            )
+            return membership, True
+
+        users_created = users_reused = 0
+        user_map = {}
+        for spec in DEMO_USERS:
+            user, created = _ensure_user(
+                db, spec["email"], spec["password"], spec["full_name"]
+            )
+            user_map[spec["email"]] = user
+            if created:
+                users_created += 1
+            else:
+                users_reused += 1
+        db.commit()
+
+        memberships_created = memberships_reused = 0
+        for spec in DEMO_MEMBERSHIPS:
+            user = user_map[spec["email"]]
+            _, created = _ensure_membership(db, user, adtu, spec["role"])
+            if created:
+                memberships_created += 1
+            else:
+                memberships_reused += 1
+        db.commit()
+
+        print(
+            f"[users] {users_created} created, {users_reused} already present"
+        )
+        print(
+            f"[memberships] {memberships_created} created, "
+            f"{memberships_reused} already present"
+        )
     finally:
         db.close()
 
