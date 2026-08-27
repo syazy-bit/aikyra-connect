@@ -42,7 +42,7 @@ export function Register() {
     setSubmitting(false);
 
     if (result.success) {
-      navigate("/login");
+      navigate("/");
     }
   };
 
