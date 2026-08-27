@@ -150,17 +150,59 @@ Implemented exactly as specified below: given Problem DNA, ranks **active + veri
 
 ---
 
-## Phase 5 — University Challenge Workflow (absorbs old workspace scope; split into 4C/4D)
-
-### Phase 4C — Challenge Interest & Acceptance
+## Phase 4C — Authentication, Authorization & Verification ✅ COMPLETE
 
 Build:
 
-- `challenge_interests` — institution expresses interest in a specific challenge
-- Institution review / accept flow
-- Assigned-challenge view
+### Phase 4C Checkpoint 1 — Authentication Foundation
+- User registration: `POST /api/auth/register` (email, password, full_name)
+- User login: `POST /api/auth/login` (email, password) → JWT access token
+- Current user: `GET /api/auth/me` (Bearer token) → user profile
+- bcrypt password hashing (cost 12)
+- Email normalization (lowercase, unique index on `lower(email)`)
+- Duplicate registration protection (409)
+- JWT: HS256, configurable expiration, stateless
 
-### Phase 4D — Faculty / Student Team Workflow
+### Phase 4C Checkpoint 2 — Institution Ownership & Authorization
+- `institution_memberships` table linking users ↔ institutions
+- Roles: `owner`, `representative`, `reviewer`
+- Statuses: `active`, `invited`, `suspended`
+- Automatic owner membership on institution creation
+- Owner/representative can PATCH institution
+- Reviewer cannot PATCH (verification-only role)
+- Database-backed authorization (never trusts JWT claims)
+- Mass-assignment protection: `extra='forbid'` on schemas
+
+### Phase 4C Checkpoint 3 — Verification Workflow
+- `pending_review` added to `institution_verification_status` enum
+- State machine: `unverified` → `pending_review` → `verified` / `rejected` / `suspended`
+- Owner/representative: `submit_for_review`, `resubmit` (after rejection)
+- Reviewer: `verify`, `reject`, `suspend`, `reinstate`
+- Invalid transitions return 409
+- Server-controlled audit fields: `verified_by`, `verified_at`, `verification_note`, `reviewer_user_id`
+- Owner cannot self-verify (403)
+- Verification badge UI: `unverified`, `pending_review`, `verified`, `rejected`, `suspended`
+
+### Phase 4C Checkpoint 4 — Development Seed Integration
+- `seed_phase4c.py` — demo users + ADTU memberships
+- `seed_local_demo.py` — integrates Phase 4C users/memberships
+- `seed_phase4b.py` — integrates Phase 4C users/memberships
+- Idempotent, development-only, never auto-executed
+
+### Phase 4C Checkpoint 5 — Frontend Authentication
+- `AuthContext`: session restoration, login, register, logout
+- `/login`, `/register` pages with validation
+- `ProtectedRoute` wrapper for `/institutions/register`
+- `UserMenu` in navbar (Login/Register when logged out; Name/Logout when logged in)
+- Automatic JWT attachment via API service
+- 401 clears token + redirects; 403 shows permission error (no logout)
+- Ownership-aware edit UI (checks `GET /api/institutions/{id}/membership`)
+
+**DoD:** Users can register, login, logout, and session restores on refresh. Institution creation requires auth; editing requires active owner/representative membership. Verification workflow operates through backend state machine with server-controlled audit fields. Frontend displays correct verification statuses including `pending_review`. All 297 backend tests pass; frontend build passes.
+
+---
+
+## Phase 4D — Faculty / Student Team Workflow
 
 Build:
 

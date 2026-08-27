@@ -66,7 +66,59 @@ Any system-derived content must include provenance (`generated_by`, `analyzer_ve
 
 ## Errors & Status Codes
 
-401/403 reserved for the auth phase (no fake security before then). Otherwise standard codes: 404 (`NotFoundError` → `{"detail": "<Entity> with id '...' not found"}`), 409 (`ConflictError`, e.g. duplicate institution name/website), 422 (validation), 500 (server).
+401/403 reserved for the auth phase. Phase 4C implements:
+- **401 Unauthorized** — missing/invalid/expired JWT. Token cleared client-side, user redirected to login.
+- **403 Forbidden** — authenticated but lacks membership/role for the action. User NOT logged out; permission error displayed.
+- **422 Unprocessable Entity** — validation error (Pydantic, `extra='forbid'` prevents mass-assignment).
+- **409 Conflict** — duplicate resource (institution name/website) or invalid verification state transition.
+- Standard codes: 404, 500.
+
+## Authentication Conventions (Phase 4C)
+
+### JWT Bearer Token
+- **Header:** `Authorization: Bearer <access_token>`
+- **Algorithm:** HS256
+- **Payload:** `sub` (user UUID), `iat`, `exp`
+- **Expiration:** Configurable via `JWT_EXPIRE_MINUTES` (default 30 minutes)
+- **Secret:** `JWT_SECRET_KEY` (environment variable)
+
+### Endpoints
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/auth/register` | Public | Register new user |
+| POST | `/api/auth/login` | Public | Login, returns JWT |
+| GET | `/api/auth/me` | Required | Current user profile |
+| POST | `/api/institutions` | Required | Create institution (auto-creates owner membership) |
+| PATCH | `/api/institutions/{id}` | Required | Update (requires active owner/rep membership) |
+| GET | `/api/institutions/{id}/membership` | Required | Caller's membership for institution |
+| PATCH | `/api/institutions/{id}/verification` | Required | Verification workflow (role-based) |
+
+### Authorization Model
+- **Database-backed:** `MembershipRepository.has_role(user_id, institution_id, roles)` queries `institution_memberships`
+- **Never trusts:** JWT claims, client headers, URL parameters
+- **Role matrix:**
+  - `owner` / `representative` (active) → institution PATCH
+  - `reviewer` (active) → verification actions only
+  - No membership / inactive / invited / suspended → 403
+- **Institution isolation:** Membership on institution A does not grant access to institution B
+
+### Server-Controlled Fields (never client-settable)
+| Field | Context | Set By |
+|-------|---------|--------|
+| `verified_by` | Institution verification | Reviewer (server) |
+| `verified_at` | Institution verification | Server timestamp |
+| `verification_note` | Institution verification | Reviewer (server) |
+| `reviewer_user_id` | Verification request | Server (from auth) |
+| `owner_user_id` | Institution creation | Server (from auth) |
+| `role` | Membership | Server (endpoint logic) |
+| `verification_status` | Institution | Server (state machine) |
+
+### Frontend Handling
+- Token stored in `localStorage` as `aikyra_token`
+- API service auto-injects `Authorization` header when token exists
+- 401 → clears token, redirects to `/login`
+- 403 → displays permission error, **does not logout**
+- Session restored on app startup via `GET /api/auth/me`
 
 ## Versioning
 

@@ -1,6 +1,6 @@
 # Database Design
 
-> Documents **what is currently implemented** (Phase 1 Challenge Engine, Phase 2 Problem DNA, Phase 3 Discovery search, Phase 4A Institution Foundation). Future entities are listed at the bottom as direction only.
+> Documents **what is currently implemented** (Phase 1 Challenge Engine, Phase 2 Problem DNA, Phase 3 Discovery search, Phase 4A Institution Foundation, **Phase 4C Authentication, Authorization & Verification**). Future entities are listed at the bottom as direction only.
 
 ## Engine & Tooling
 
@@ -91,6 +91,71 @@ A higher-education institution, research institute or innovation hub participati
 No foreign keys exist yet — institutions are independent roots, like challenges were in Phase 1. Challenge↔institution relationships (interest, acceptance, projects) are deliberately deferred to their own phases so capability data, recommendations and workflow state are never conflated.
 
 **Matching note (Phase 4B):** there is intentionally **no matches table**. Recommendations (`GET /api/challenges/{id}/matches`) are computed per request from current `problem_dna` × `institutions` rows by a pure scoring function, so rankings can never go stale. The Phase 4A indexes (GIN on `domains`, btrees on status/verification) are sufficient at current scale; no matching-specific index was added.
+
+### `users` (Phase 4C — revision `a1b2c3d4e5f6`)
+
+User accounts for platform authentication.
+
+| Column         | Type                       | Constraints / Notes                                   |
+|----------------|----------------------------|-------------------------------------------------------|
+| `id`           | `UUID`                     | Primary key                                           |
+| `email`        | `VARCHAR(254)`             | NOT NULL                                              |
+| `hashed_password` | `VARCHAR(255)`          | NOT NULL (bcrypt, cost 12)                            |
+| `full_name`    | `VARCHAR(250)`             | Nullable                                              |
+| `is_active`    | `BOOLEAN`                  | NOT NULL, default `true`                              |
+| `is_verified`  | `BOOLEAN`                  | NOT NULL, default `false`                             |
+| `created_at`   | `TIMESTAMPTZ`              | NOT NULL, server default `now()`                      |
+| `updated_at`   | `TIMESTAMPTZ`              | NOT NULL, server default `now()`                      |
+
+**Indexes:** PK on `id`; unique functional index `uq_users_email` on `lower(email)` for case-insensitive uniqueness and login lookups.
+
+**Password handling:** passwords are **never stored in plaintext** — only bcrypt hashes. `hashed_password` is populated by `AuthService.register()` via `passlib` with bcrypt rounds=12. Login verifies via `pwd_context.verify()`.
+
+### `institution_memberships` (Phase 4C — revision `e7a2b8f1c3d4`)
+
+Join table linking users to institutions with role and status. This is the **single source of truth for authorization** — no role information is trusted from JWT claims or client input.
+
+| Column              | Type                       | Constraints / Notes                                   |
+|---------------------|----------------------------|-------------------------------------------------------|
+| `id`                | `UUID`                     | Primary key                                           |
+| `user_id`           | `UUID`                     | NOT NULL, FK → `users.id` ON DELETE CASCADE           |
+| `institution_id`    | `UUID`                     | NOT NULL, FK → `institutions.id` ON DELETE CASCADE    |
+| `role`              | `institution_membership_role` (enum) | NOT NULL: `owner`, `representative`, `reviewer`       |
+| `status`            | `institution_membership_status` (enum) | NOT NULL, default `active`: `active`, `invited`, `suspended` |
+| `created_at`        | `TIMESTAMPTZ`              | NOT NULL, server default `now()`                      |
+| `updated_at`        | `TIMESTAMPTZ`              | NOT NULL, server default `now()`                      |
+
+**Constraints:**
+- Unique constraint `uq_membership_user_institution` on `(user_id, institution_id)` — one membership per user per institution
+- `ix_membership_institution` index on `institution_id`
+- `ix_membership_user` index on `user_id`
+- FK `user_id` → `users.id` ON DELETE CASCADE
+- FK `institution_id` → `institutions.id` ON DELETE CASCADE
+
+**Authorization rules (enforced in `MembershipRepository.has_role`):**
+- Only `active` memberships grant permissions
+- `owner` / `representative` → can PATCH institution (write access)
+- `reviewer` → verification actions only (no institution edits)
+- No membership → no permissions (403)
+
+### `institution_verification_status` enum update (Phase 4C — revision `f3b9c2d1a8e7`)
+
+Added `pending_review` to the existing enum using safe type replacement:
+`unverified` | `pending_review` | `verified` | `rejected` | `suspended`
+
+**State machine:**
+- `unverified` → `pending_review` (owner/rep submits)
+- `pending_review` → `verified` / `rejected` (reviewer decides)
+- `verified` → `suspended` (reviewer suspends)
+- `suspended` → `verified` (reviewer reinstates)
+- `rejected` → `pending_review` (owner/rep resubmits)
+- Invalid transitions rejected (409)
+
+**Server-controlled audit fields (never client-settable):**
+- `verified_by` (UUID of reviewer)
+- `verified_at` (TIMESTAMPTZ)
+- `verification_note` (reviewer remarks / rejection reason)
+- `reviewer_user_id` (internal tracking)
 
 ## Data Access Conventions
 
