@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link, useRouter } from "../context/RouterContext.jsx";
-import { getInstitution } from "../services/institutionService.js";
+import { useAuth } from "../context/AuthContext.jsx";
+import { getInstitution, getInstitutionMembership } from "../services/institutionService.js";
 import { VerificationBadge } from "../components/VerificationBadge.jsx";
 import { INSTITUTION_TYPE_LABELS } from "../components/InstitutionCard.jsx";
 import { CapabilitiesSection } from "../components/CapabilitiesSection.jsx";
@@ -9,9 +10,11 @@ import { Alert } from "../components/Alert.jsx";
 
 export function InstitutionDetail() {
   const { route } = useRouter();
+  const { isAuthenticated } = useAuth();
   const institutionId = route.params.id;
 
   const [institution, setInstitution] = useState(null);
+  const [membership, setMembership] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -20,7 +23,12 @@ export function InstitutionDetail() {
     try {
       setLoading(true);
       setError(null);
-      setInstitution(await getInstitution(institutionId));
+      const [inst, mem] = await Promise.all([
+        getInstitution(institutionId),
+        isAuthenticated ? getInstitutionMembership(institutionId) : Promise.resolve({ is_member: false }),
+      ]);
+      setInstitution(inst);
+      setMembership(mem);
     } catch (err) {
       setError(
         err.message ||
@@ -30,7 +38,7 @@ export function InstitutionDetail() {
     } finally {
       setLoading(false);
     }
-  }, [institutionId]);
+  }, [institutionId, isAuthenticated]);
 
   useEffect(() => {
     fetchDetails();
@@ -44,6 +52,10 @@ export function InstitutionDetail() {
       year: "numeric",
     });
   };
+
+  const canEdit = membership?.is_member === true &&
+    (membership?.role === "owner" || membership?.role === "representative") &&
+    membership?.membership_status === "active";
 
   if (loading) {
     return (
@@ -205,18 +217,27 @@ export function InstitutionDetail() {
           </section>
         )}
 
-        {/* Edit CTA */}
-        <div style={{ marginTop: "var(--space-6)", display: "flex", gap: "var(--space-3)" }}>
-          <Link
-            href={`/institutions/register?edit=${institution.id}`}
-            className="btn btn-secondary"
-          >
-            Edit Profile & Capabilities
-          </Link>
-          <Link href="/challenges" className="btn btn-outline">
-            Browse Community Challenges
-          </Link>
-        </div>
+        {/* Edit CTA - only shown for active owner/representative */}
+        {canEdit && (
+          <div style={{ marginTop: "var(--space-6)", display: "flex", gap: "var(--space-3)" }}>
+            <Link
+              href={`/institutions/register?edit=${institution.id}`}
+              className="btn btn-secondary"
+            >
+              Edit Profile & Capabilities
+            </Link>
+            <Link href="/challenges" className="btn btn-outline">
+              Browse Community Challenges
+            </Link>
+          </div>
+        )}
+        {!canEdit && (
+          <div style={{ marginTop: "var(--space-6)", display: "flex", gap: "var(--space-3)" }}>
+            <Link href="/challenges" className="btn btn-outline">
+              Browse Community Challenges
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );

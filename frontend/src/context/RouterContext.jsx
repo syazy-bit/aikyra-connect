@@ -37,6 +37,8 @@ export function RouterProvider({ children }) {
     const params = Object.fromEntries(new URLSearchParams(location.search));
 
     if (path === "/") return { name: "home", params: {}, query: {} };
+    if (path === "/login") return { name: "login", params: {}, query: params };
+    if (path === "/register") return { name: "register", params: {}, query: params };
     if (path === "/report") return { name: "report", params: {}, query: {} };
     if (path === "/challenges") return { name: "challenges", params: {}, query: params };
 

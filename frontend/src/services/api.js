@@ -5,6 +5,7 @@
  */
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
+const TOKEN_KEY = "aikyra_token";
 
 export class ApiError extends Error {
   constructor(message, status, details = null) {
@@ -15,16 +16,37 @@ export class ApiError extends Error {
   }
 }
 
+let onUnauthenticated = null;
+
+export function setUnauthenticatedHandler(handler) {
+  onUnauthenticated = handler;
+}
+
+function getToken() {
+  return localStorage.getItem(TOKEN_KEY);
+}
+
+function clearToken() {
+  localStorage.removeItem(TOKEN_KEY);
+}
+
 /**
  * Perform an HTTP request and parse the response JSON.
  * Normalizes error messages and details.
+ * Automatically includes Authorization header when token exists.
  */
 export async function apiRequest(endpoint, options = {}) {
   const url = `${BASE_URL}${endpoint}`;
+  const token = getToken();
+
   const headers = {
     "Content-Type": "application/json",
     ...options.headers,
   };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
 
   let response;
   try {
@@ -57,6 +79,14 @@ export async function apiRequest(endpoint, options = {}) {
   }
 
   if (!response.ok) {
+    // Handle 401: clear token and notify app
+    if (response.status === 401) {
+      clearToken();
+      if (onUnauthenticated) {
+        onUnauthenticated();
+      }
+    }
+
     // Format human-friendly error messages from backend responses
     let errorMessage = "An unexpected error occurred. Please try again.";
 

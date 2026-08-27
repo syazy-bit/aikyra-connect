@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useRouter } from "../context/RouterContext.jsx";
+import { useAuth } from "../context/AuthContext.jsx";
 import { getTaxonomy } from "../services/challengeService.js";
 import {
   getInstitution,
   registerInstitution,
   updateInstitution,
+  getInstitutionMembership,
 } from "../services/institutionService.js";
 import { INSTITUTION_TYPE_LABELS } from "../components/InstitutionCard.jsx";
 import { Alert } from "../components/Alert.jsx";
@@ -41,6 +43,7 @@ const EMPTY_FORM = {
 
 export function RegisterInstitution() {
   const { route, navigate } = useRouter();
+  const { isAuthenticated } = useAuth();
   const editId = route.query.edit || null;
   const isEdit = Boolean(editId);
 
@@ -53,6 +56,8 @@ export function RegisterInstitution() {
   const [apiError, setApiError] = useState(null);
   const [conflictId, setConflictId] = useState(null);
   const [errors, setErrors] = useState({});
+  const [membershipChecked, setMembershipChecked] = useState(!isEdit);
+  const [canEditInstitution, setCanEditInstitution] = useState(true);
 
   // Taxonomy is the single source of truth for domain options.
   useEffect(() => {
@@ -65,10 +70,12 @@ export function RegisterInstitution() {
     };
   }, []);
 
-  // Edit mode: pre-fill from the existing profile.
+  // Edit mode: pre-fill from the existing profile and check membership.
   useEffect(() => {
     if (!editId) {
       setLoadingEdit(false);
+      setMembershipChecked(true);
+      setCanEditInstitution(true);
       return;
     }
     let cancelled = false;
@@ -95,6 +102,32 @@ export function RegisterInstitution() {
       cancelled = true;
     };
   }, [editId]);
+
+  // Check membership for edit mode (direct URL access).
+  useEffect(() => {
+    if (!isEdit || !editId || !isAuthenticated) {
+      if (!isEdit) setMembershipChecked(true);
+      return;
+    }
+    let cancelled = false;
+    getInstitutionMembership(editId)
+      .then((mem) => {
+        if (cancelled) return;
+        const allowed = mem?.is_member === true &&
+          (mem?.role === "owner" || mem?.role === "representative") &&
+          mem?.membership_status === "active";
+        setCanEditInstitution(allowed);
+        setMembershipChecked(true);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setCanEditInstitution(false);
+        setMembershipChecked(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isEdit, editId, isAuthenticated]);
 
   const capabilityText = useMemo(() => {
     const map = {};
@@ -157,6 +190,15 @@ export function RegisterInstitution() {
         : await registerInstitution(payload);
       navigate(`/institutions/${result.id}`);
     } catch (err) {
+      if (err.status === 401) {
+        setApiError("Your session has expired. Please sign in again.");
+        navigate("/login");
+        return;
+      }
+      if (err.status === 403) {
+        setApiError("You don't have permission to modify this institution.");
+        return;
+      }
       const match = err.message?.match(/id:\s*([0-9a-f-]{36})/i);
       if (err.status === 409 && match) {
         setConflictId(match[1]);
@@ -172,6 +214,23 @@ export function RegisterInstitution() {
       <div className="report-page">
         <div className="container-narrow">
           <LoadingSpinner size="lg" message="Loading institution profile..." />
+        </div>
+      </div>
+    );
+  }
+
+  if (!membershipChecked || !canEditInstitution) {
+    return (
+      <div className="report-page">
+        <div className="container-narrow">
+          <div className="card" style={{ padding: "var(--space-8)", textAlign: "center" }}>
+            <Alert type="danger" title="Access Denied">
+              <p>You don't have permission to edit this institution.</p>
+              <Link href="/institutions" className="btn btn-primary" style={{ marginTop: "var(--space-4)" }}>
+                Browse Institutions
+              </Link>
+            </Alert>
+          </div>
         </div>
       </div>
     );
@@ -365,7 +424,7 @@ export function RegisterInstitution() {
 
           {/* Capabilities */}
           <div className="form-group">
-            <span className="form-label">Capabilities &amp; expertise</span>
+            <span className="form-label">Capabilities & expertise</span>
             <p className="form-helper">
               Comma-separated lists. Only filled sections are saved. These are
               self-declared and reviewed during verification.

@@ -1,5 +1,7 @@
 import React from "react";
 import { RouterProvider, useRouter, Link } from "./context/RouterContext.jsx";
+import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
+import { ProtectedRoute } from "./components/ProtectedRoute.jsx";
 import { Navbar } from "./components/Navbar.jsx";
 import { Footer } from "./components/Footer.jsx";
 import { Home } from "./pages/Home.jsx";
@@ -9,6 +11,8 @@ import { ChallengeDetail } from "./pages/ChallengeDetail.jsx";
 import { Institutions } from "./pages/Institutions.jsx";
 import { InstitutionDetail } from "./pages/InstitutionDetail.jsx";
 import { RegisterInstitution } from "./pages/RegisterInstitution.jsx";
+import { Login } from "./pages/Login.jsx";
+import { Register } from "./pages/Register.jsx";
 
 function AppContent() {
   const { route } = useRouter();
@@ -17,6 +21,10 @@ function AppContent() {
     switch (route.name) {
       case "home":
         return <Home />;
+      case "login":
+        return <Login />;
+      case "register":
+        return <Register />;
       case "report":
         return <ReportProblem />;
       case "challenges":
@@ -28,7 +36,11 @@ function AppContent() {
       case "institution-detail":
         return <InstitutionDetail />;
       case "institution-register":
-        return <RegisterInstitution />;
+        return (
+          <ProtectedRoute>
+            <RegisterInstitution />
+          </ProtectedRoute>
+        );
       default:
         return (
           <main className="container-narrow" style={{ padding: "var(--space-16) var(--space-4)", textAlign: "center" }}>
@@ -58,7 +70,9 @@ function AppContent() {
 export default function App() {
   return (
     <RouterProvider>
-      <AppContent />
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
     </RouterProvider>
   );
 }

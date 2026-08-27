@@ -66,3 +66,12 @@ export async function updateInstitution(id, payload) {
     body: JSON.stringify(payload),
   });
 }
+
+/**
+ * Fetch the authenticated user's membership status for an institution.
+ * Returns { is_member, role, membership_status } or { is_member: false }.
+ */
+export async function getInstitutionMembership(id) {
+  if (!id) throw new Error("Institution ID is required");
+  return apiRequest(`/api/institutions/${encodeURIComponent(id)}/membership`);
+}
