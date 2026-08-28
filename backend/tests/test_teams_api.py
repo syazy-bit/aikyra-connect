@@ -151,15 +151,17 @@ def test_create_team_requires_active_membership(auth_client, reviewer_client, db
 
 
 def test_create_team_rejects_invalid_role(auth_client, reviewer_client, db_session):
-    """A role not in the allowed creator roles cannot create a team."""
+    """The platform reviewer role does not grant team-creation rights.
+
+    Reviewer is now a global platform role; it is not an institution
+    membership role and does not imply an institution creator role. A
+    platform reviewer with no active institution membership cannot create
+    a team.
+    """
     inst = _create_institution(auth_client)
     ch = _create_challenge(auth_client)
-    _create_membership(
-        db_session,
-        _user_id(db_session, "reviewer@aikyra.dev"),
-        uuid.UUID(inst["id"]),
-        "reviewer",
-    )
+    # reviewer@aikyra.dev is a PLATFORM reviewer; it has no institution
+    # creator role here, so team creation must be refused.
     response = reviewer_client.post(
         "/api/teams",
         json={

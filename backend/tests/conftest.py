@@ -151,11 +151,13 @@ def auth_client(db_session: Session):
 
 @pytest.fixture
 def reviewer_client(db_session: Session):
-    """Authenticated client: a second registered + logged-in test user.
+    """Authenticated client: a platform reviewer test user.
 
     Creates its own TestClient so it does not share headers with auth_client.
+    The user is registered and then updated to have platform reviewer privileges.
     """
     from fastapi.testclient import TestClient
+    from app.models.user import User
 
     def override_get_db() -> Generator[Session, None, None]:
         try:
@@ -169,6 +171,13 @@ def reviewer_client(db_session: Session):
         c, "reviewer@aikyra.dev", "password123", "Reviewer Test User"
     )
     c.headers.update(_auth_header(token))
+
+    # Grant platform reviewer privilege to the reviewer user
+    reviewer_user = db_session.query(User).filter(User.email == "reviewer@aikyra.dev").first()
+    if reviewer_user:
+        reviewer_user.is_platform_reviewer = True
+        db_session.commit()
+
     yield c
     app.dependency_overrides.clear()
 

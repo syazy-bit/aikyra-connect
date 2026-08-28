@@ -1,7 +1,7 @@
 """Development-only Phase 4C seed — demo users and ADTU memberships.
 
-Creates reviewer and owner demo accounts with active memberships for
-Assam Down Town University so the authentication, membership, and
+Creates platform reviewer and owner demo accounts with active memberships
+for Assam Down Town University so the authentication, membership, and
 verification workflow can be manually tested locally.
 
 Usage (from backend/):
@@ -28,12 +28,14 @@ DEMO_USERS = [
     {
         "email": "reviewer@aikyra.dev",
         "password": "reviewer123",
-        "full_name": "Demo Reviewer",
+        "full_name": "Demo Platform Reviewer",
+        "is_platform_reviewer": True,
     },
     {
         "email": "owner@adtu.dev",
         "password": "owner123",
         "full_name": "ADTU Demo Owner",
+        "is_platform_reviewer": False,
     },
 ]
 
@@ -42,24 +44,28 @@ DEMO_MEMBERSHIPS = [
         "email": "owner@adtu.dev",
         "role": InstitutionMembershipRole.OWNER,
     },
-    {
-        "email": "reviewer@aikyra.dev",
-        "role": InstitutionMembershipRole.REVIEWER,
-    },
+    # Note: reviewer@aikyra.dev is a PLATFORM reviewer, not an institution member.
+    # Platform reviewers verify institutions across the platform without
+    # needing institution-specific memberships.
 ]
 
 
-def _ensure_user(db, email: str, password: str, full_name: str):
+def _ensure_user(db, email: str, password: str, full_name: str, is_platform_reviewer: bool = False):
     """Return (user, created). Flushes but does not commit."""
     repo = UserRepository(db)
     user = repo.get_by_email(email)
     if user is not None:
+        # Update platform reviewer flag if needed
+        if user.is_platform_reviewer != is_platform_reviewer:
+            user.is_platform_reviewer = is_platform_reviewer
+            db.flush()
         return user, False
     user = repo.create(
         {
             "email": email.lower(),
             "hashed_password": pwd_context.hash(password),
             "full_name": full_name,
+            "is_platform_reviewer": is_platform_reviewer,
         }
     )
     return user, True
@@ -99,7 +105,8 @@ def main() -> None:
         user_map = {}
         for spec in DEMO_USERS:
             user, created = _ensure_user(
-                db, spec["email"], spec["password"], spec["full_name"]
+                db, spec["email"], spec["password"], spec["full_name"],
+                spec.get("is_platform_reviewer", False)
             )
             user_map[spec["email"]] = user
             if created:
@@ -134,7 +141,8 @@ def main() -> None:
         print()
         print("Demo accounts:")
         for spec in DEMO_USERS:
-            print(f"  {spec['email']} ({spec['password']})")
+            reviewer_flag = " (platform reviewer)" if spec.get("is_platform_reviewer") else ""
+            print(f"  {spec['email']} ({spec['password']}){reviewer_flag}")
         print("=" * 64)
     finally:
         db.close()

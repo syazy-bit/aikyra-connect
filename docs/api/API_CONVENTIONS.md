@@ -91,27 +91,29 @@ Any system-derived content must include provenance (`generated_by`, `analyzer_ve
 | POST | `/api/institutions` | Required | Create institution (auto-creates owner membership) |
 | PATCH | `/api/institutions/{id}` | Required | Update (requires active owner/rep membership) |
 | GET | `/api/institutions/{id}/membership` | Required | Caller's membership for institution |
-| PATCH | `/api/institutions/{id}/verification` | Required | Verification workflow (role-based) |
+| PATCH | `/api/institutions/{id}/verification` | Required | Verification workflow (owner/rep submit + platform reviewer actions) |
 
 ### Authorization Model
-- **Database-backed:** `MembershipRepository.has_role(user_id, institution_id, roles)` queries `institution_memberships`
-- **Never trusts:** JWT claims, client headers, URL parameters
+- **Database-backed:** `MembershipRepository.has_role(user_id, institution_id, roles)` queries `institution_memberships`; platform reviewer privilege is read from `users.is_platform_reviewer`
+- **Never trusts:** JWT claims, client headers, URL parameters, body fields
 - **Role matrix:**
-  - `owner` / `representative` (active) → institution PATCH
-  - `reviewer` (active) → verification actions only
+  - `owner` / `representative` (active) → institution PATCH, submit_for_review, resubmit
+  - Platform reviewer (`users.is_platform_reviewer = true`) → verify, reject, suspend, reinstate on ANY institution (no membership required)
+  - `faculty` / `student` (active) → institution-scoped roles (Phase 5); no PATCH, no verification
   - No membership / inactive / invited / suspended → 403
-- **Institution isolation:** Membership on institution A does not grant access to institution B
+- **Institution isolation:** Membership on institution A does not grant access to institution B. Platform reviewers are deliberately platform-wide for verification only; they gain no institution write access.
 
 ### Server-Controlled Fields (never client-settable)
 | Field | Context | Set By |
 |-------|---------|--------|
-| `verified_by` | Institution verification | Reviewer (server) |
+| `verified_by` | Institution verification | Platform reviewer (server, from auth) |
 | `verified_at` | Institution verification | Server timestamp |
-| `verification_note` | Institution verification | Reviewer (server) |
+| `verification_note` | Institution verification | Platform reviewer (server) |
 | `reviewer_user_id` | Verification request | Server (from auth) |
 | `owner_user_id` | Institution creation | Server (from auth) |
 | `role` | Membership | Server (endpoint logic) |
 | `verification_status` | Institution | Server (state machine) |
+| `is_platform_reviewer` | User | Server/admin only — never client-settable |
 
 ### Frontend Handling
 - Token stored in `localStorage` as `aikyra_token`

@@ -165,11 +165,10 @@ Build:
 
 ### Phase 4C Checkpoint 2 — Institution Ownership & Authorization
 - `institution_memberships` table linking users ↔ institutions
-- Roles: `owner`, `representative`, `reviewer`
+- Roles: `owner`, `representative`, `faculty`, `student`
 - Statuses: `active`, `invited`, `suspended`
 - Automatic owner membership on institution creation
 - Owner/representative can PATCH institution
-- Reviewer cannot PATCH (verification-only role)
 - Database-backed authorization (never trusts JWT claims)
 - Mass-assignment protection: `extra='forbid'` on schemas
 
@@ -177,11 +176,18 @@ Build:
 - `pending_review` added to `institution_verification_status` enum
 - State machine: `unverified` → `pending_review` → `verified` / `rejected` / `suspended`
 - Owner/representative: `submit_for_review`, `resubmit` (after rejection)
-- Reviewer: `verify`, `reject`, `suspend`, `reinstate`
+- Platform reviewer (global Aikyra staff): `verify`, `reject`, `suspend`, `reinstate` on ANY institution
 - Invalid transitions return 409
 - Server-controlled audit fields: `verified_by`, `verified_at`, `verification_note`, `reviewer_user_id`
 - Owner cannot self-verify (403)
 - Verification badge UI: `unverified`, `pending_review`, `verified`, `rejected`, `suspended`
+
+### Phase 4C — Platform Reviewer Architecture Correction
+- Reviewer is a **platform-level** role (`users.is_platform_reviewer`), NOT an institution membership role
+- Removed `reviewer` from `institution_membership_role`; added `faculty` and `student`
+- A platform reviewer can verify any institution without being a member of it
+- Institution owners/representatives cannot verify/suspend/reinstate
+- Acknowledgement: Phase 5 CP1 (teams) already committed and left intact
 
 ### Phase 4C Checkpoint 4 — Development Seed Integration
 - `seed_phase4c.py` — demo users + ADTU memberships

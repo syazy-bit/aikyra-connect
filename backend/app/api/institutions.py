@@ -42,7 +42,7 @@ def register_institution(
 
     Requires authentication. The authenticated user becomes the owner.
     Every registration starts `active` + `unverified` (human-entered data).
-    Verification is performed by reviewers in a later phase.
+    Verification is performed by platform reviewers.
     """
     return service.to_response(
         service.create_institution(payload, owner_user_id=current_user.id)
@@ -131,7 +131,7 @@ def update_verification(
     the database-backed membership system.
 
     Owner/representative actions: submit_for_review, resubmit.
-    Reviewer actions: verify, reject, suspend, reinstate.
+    Platform reviewer actions: verify, reject, suspend, reinstate.
     """
     membership_repo = MembershipRepository(service.db)
 
@@ -140,11 +140,10 @@ def update_verification(
         raise NotFoundError("Institution", institution_id)
 
     if payload.action in _REVIEWER_ACTIONS:
-        if not membership_repo.has_role(
-            current_user.id, institution_id, ("reviewer",)
-        ):
+        # Platform reviewer authorization - no institution membership required
+        if not current_user.is_platform_reviewer:
             raise ForbiddenError(
-                "You do not have reviewer permissions for this institution."
+                "You do not have platform reviewer permissions."
             )
     elif payload.action in _OWNER_ACTIONS:
         if not membership_repo.has_role(

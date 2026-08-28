@@ -132,16 +132,13 @@ def test_patch_no_membership_forbidden(auth_client, reviewer_client, db_session)
 
 
 def test_patch_reviewer_role_forbidden(auth_client, reviewer_client, db_session):
-    """A reviewer-role membership cannot PATCH (write access is owner/rep only)."""
+    """A platform reviewer (who is not an owner/rep member) cannot PATCH
+    (write access is owner/rep only). The reviewer role is platform-level
+    and does not grant institution write access."""
     created = _create_institution(auth_client)
     from app.models.user import User
 
-    reviewer_user = db_session.query(User).filter(
-        User.email == "reviewer@aikyra.dev"
-    ).first()
-    _create_membership(
-        db_session, reviewer_user.id, uuid.UUID(created["id"]), "reviewer"
-    )
+    # reviewer_client is a platform reviewer with no owner/rep membership here
     response = reviewer_client.patch(
         f"/api/institutions/{created['id']}",
         json={"description": "Reviewer cannot write."},

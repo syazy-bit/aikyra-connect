@@ -13,7 +13,8 @@ class User(Base):
 
     Authentication is email + bcrypt-hashed password. JWT tokens carry only
     the user identity (`sub`); authorization roles are resolved per-request
-    from `institution_memberships` (added in a later checkpoint).
+    from `institution_memberships` (institution-scoped) and platform-level
+    flags (e.g., is_platform_reviewer).
     """
 
     __tablename__ = "users"
@@ -28,6 +29,9 @@ class User(Base):
         Boolean, nullable=False, default=True, server_default="true"
     )
     is_verified: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    is_platform_reviewer: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false"
     )
     created_at: Mapped[datetime] = mapped_column(

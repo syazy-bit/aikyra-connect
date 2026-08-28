@@ -104,6 +104,7 @@ User accounts for platform authentication.
 | `full_name`    | `VARCHAR(250)`             | Nullable                                              |
 | `is_active`    | `BOOLEAN`                  | NOT NULL, default `true`                              |
 | `is_verified`  | `BOOLEAN`                  | NOT NULL, default `false`                             |
+| `is_platform_reviewer` | `BOOLEAN`        | NOT NULL, default `false` (revision `i1j2k3l4m5n6`). Platform-level privilege, NOT an institution membership |
 | `created_at`   | `TIMESTAMPTZ`              | NOT NULL, server default `now()`                      |
 | `updated_at`   | `TIMESTAMPTZ`              | NOT NULL, server default `now()`                      |
 
@@ -120,7 +121,7 @@ Join table linking users to institutions with role and status. This is the **sin
 | `id`                | `UUID`                     | Primary key                                           |
 | `user_id`           | `UUID`                     | NOT NULL, FK → `users.id` ON DELETE CASCADE           |
 | `institution_id`    | `UUID`                     | NOT NULL, FK → `institutions.id` ON DELETE CASCADE    |
-| `role`              | `institution_membership_role` (enum) | NOT NULL: `owner`, `representative`, `reviewer`       |
+| `role`              | `institution_membership_role` (enum) | NOT NULL: `owner`, `representative`, `faculty`, `student` (revision `j2k3l4m5n6o7` removed `reviewer`; faculty/student added for Phase 5) |
 | `status`            | `institution_membership_status` (enum) | NOT NULL, default `active`: `active`, `invited`, `suspended` |
 | `created_at`        | `TIMESTAMPTZ`              | NOT NULL, server default `now()`                      |
 | `updated_at`        | `TIMESTAMPTZ`              | NOT NULL, server default `now()`                      |
@@ -132,11 +133,18 @@ Join table linking users to institutions with role and status. This is the **sin
 - FK `user_id` → `users.id` ON DELETE CASCADE
 - FK `institution_id` → `institutions.id` ON DELETE CASCADE
 
-**Authorization rules (enforced in `MembershipRepository.has_role`):**
+**Authorization rules (enforced in `MembershipRepository.has_role` and `dependencies/auth.py`):**
 - Only `active` memberships grant permissions
 - `owner` / `representative` → can PATCH institution (write access)
-- `reviewer` → verification actions only (no institution edits)
+- `owner` / `representative` → can submit/resubmit institution for review
+- `faculty` / `student` → institution-scoped roles (Phase 5); no verification rights
 - No membership → no permissions (403)
+
+**Platform reviewer (revision `i1j2k3l4m5n6`):** a platform-level privilege stored as
+`users.is_platform_reviewer`, NOT as an institution membership. A platform reviewer
+is Aikyra staff who can verify/reject/suspend/reinstate ANY institution across the
+platform without needing a membership at any of them. Authorization is resolved from
+the `users` table server-side; it is never taken from a JWT claim or client input.
 
 ### `institution_verification_status` enum update (Phase 4C — revision `f3b9c2d1a8e7`)
 
@@ -145,14 +153,14 @@ Added `pending_review` to the existing enum using safe type replacement:
 
 **State machine:**
 - `unverified` → `pending_review` (owner/rep submits)
-- `pending_review` → `verified` / `rejected` (reviewer decides)
-- `verified` → `suspended` (reviewer suspends)
-- `suspended` → `verified` (reviewer reinstates)
+- `pending_review` → `verified` / `rejected` (platform reviewer decides)
+- `verified` → `suspended` (platform reviewer suspends)
+- `suspended` → `verified` (platform reviewer reinstates)
 - `rejected` → `pending_review` (owner/rep resubmits)
 - Invalid transitions rejected (409)
 
 **Server-controlled audit fields (never client-settable):**
-- `verified_by` (UUID of reviewer)
+- `verified_by` (UUID of platform reviewer who acted)
 - `verified_at` (TIMESTAMPTZ)
 - `verification_note` (reviewer remarks / rejection reason)
 - `reviewer_user_id` (internal tracking)

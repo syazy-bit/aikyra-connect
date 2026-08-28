@@ -1,7 +1,12 @@
 """Authentication/authorization dependencies for route protection.
 
-Authorization is resolved from the institution_memberships database — never
-from JWT claims, client-supplied role, or client-supplied user_id.
+Authorization is resolved from the database — never from JWT claims,
+client-supplied role, or client-supplied user_id.
+
+Institution-scoped roles (owner, representative, faculty, student) are
+resolved from institution_memberships.
+
+Platform-level roles (platform reviewer) are resolved from the users table.
 """
 
 from typing import Annotated
@@ -74,32 +79,19 @@ def require_owner_or_rep(
     return current_user
 
 
-def require_reviewer(
-    institution_id: UUID = Path(),
+def require_platform_reviewer(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
 ) -> User:
-    """Authorization dependency: requires an ACTIVE reviewer membership
-    for the given institution.
+    """Authorization dependency: requires platform reviewer privilege.
 
-    Resolves membership from the database — never trusts JWT claims or
+    Resolves from the users table — never trusts JWT claims or
     client-supplied role.
 
-    Raises NotFoundError if the institution does not exist.
-    Raises ForbiddenError if the user lacks the required membership.
+    Raises ForbiddenError if the user is not a platform reviewer.
     """
-    institution_repo = InstitutionRepository(db)
-    if institution_repo.get_by_id(institution_id) is None:
-        raise NotFoundError("Institution", institution_id)
-    membership_repo = MembershipRepository(db)
-    has_access = membership_repo.has_role(
-        current_user.id,
-        institution_id,
-        ("reviewer",),
-    )
-    if not has_access:
+    if not current_user.is_platform_reviewer:
         raise ForbiddenError(
-            "You do not have reviewer permissions for this institution."
+            "You do not have platform reviewer permissions."
         )
     return current_user
 
