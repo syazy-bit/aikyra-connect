@@ -150,6 +150,31 @@ def auth_client(db_session: Session):
 
 
 @pytest.fixture
+def user_client(db_session: Session):
+    """Factory returning an authenticated TestClient for an arbitrary user.
+
+    Each client is bound to the shared db_session, so multiple clients can
+    coexist within one test (matching the auth_client/reviewer_client pattern).
+    """
+    from fastapi.testclient import TestClient
+
+    def _make(email: str, full_name: str = "Test User") -> TestClient:
+        def override_get_db() -> Generator[Session, None, None]:
+            try:
+                yield db_session
+            finally:
+                pass
+
+        app.dependency_overrides[get_db] = override_get_db
+        c = TestClient(app)
+        token = _register_and_login(c, email, "password123", full_name)
+        c.headers.update(_auth_header(token))
+        return c
+
+    return _make
+
+
+@pytest.fixture
 def reviewer_client(db_session: Session):
     """Authenticated client: a platform reviewer test user.
 

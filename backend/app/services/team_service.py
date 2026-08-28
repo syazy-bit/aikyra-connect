@@ -133,15 +133,23 @@ class TeamService:
             raise NotFoundError("Team", team_id)
         return team
 
-    def list_teams(
+    def list_visible_teams(
         self,
+        user_id: UUID,
         institution_id: UUID | None = None,
         challenge_id: UUID | None = None,
         status: TeamStatus | None = None,
         skip: int = 0,
         limit: int = 20,
     ) -> tuple[list[Team], int]:
-        return self.repository.list_teams(
+        """List teams the user is authorized to see.
+
+        Authorization is database-backed. A user only discovers teams from
+        institutions where they hold an active membership, or teams they
+        belong to.
+        """
+        return self.repository.list_visible_teams(
+            user_id=user_id,
             institution_id=institution_id,
             challenge_id=challenge_id,
             status=status,

@@ -407,3 +407,203 @@ def test_update_team_rejects_status_injection(auth_client):
         json={"status": "active", "created_by": str(uuid.uuid4())},
     )
     assert response.status_code == 422
+
+
+# --- Team detail authorization (HIGH #2) --------------------------------------
+
+
+def test_get_team_malformed_uuid_returns_422(auth_client):
+    """A malformed team id is rejected by path validation (422)."""
+    response = auth_client.get("/api/teams/not-a-uuid")
+    assert response.status_code == 422
+
+
+def test_get_team_institution_owner_not_member_can_view(auth_client, user_client, db_session):
+    """An ACTIVE owner of the team's institution can view a team even without
+    a team membership."""
+    inst = _create_institution(auth_client)
+    ch = _create_challenge(auth_client)
+    creator = user_client("creator@aikyra.dev")
+    creator_uid = _user_id(db_session, "creator@aikyra.dev")
+    _create_membership(
+        db_session, creator_uid, uuid.UUID(inst["id"]), "student", "active"
+    )
+    team = _create_team(creator, inst["id"], ch["id"], name="OwnerView")
+
+    # auth created the institution (active owner) but is NOT a team member.
+    response = auth_client.get(f"/api/teams/{team['id']}")
+    assert response.status_code == 200
+    assert response.json()["id"] == team["id"]
+
+
+def test_get_team_institution_representative_not_member_can_view(
+    auth_client, user_client, db_session
+):
+    """An ACTIVE representative of the team's institution can view a team
+    even without a team membership."""
+    inst = _create_institution(auth_client)
+    ch = _create_challenge(auth_client)
+    rep = user_client("rep@aikyra.dev")
+    rep_uid = _user_id(db_session, "rep@aikyra.dev")
+    _create_membership(
+        db_session, rep_uid, uuid.UUID(inst["id"]), "representative", "active"
+    )
+    creator = user_client("creator2@aikyra.dev")
+    creator_uid = _user_id(db_session, "creator2@aikyra.dev")
+    _create_membership(
+        db_session, creator_uid, uuid.UUID(inst["id"]), "student", "active"
+    )
+    team = _create_team(creator, inst["id"], ch["id"], name="RepView")
+
+    response = rep.get(f"/api/teams/{team['id']}")
+    assert response.status_code == 200
+    assert response.json()["id"] == team["id"]
+
+
+def test_get_team_student_not_member_forbidden(auth_client, user_client, db_session):
+    """A student at the institution who is not a team member cannot view a
+    team's private details (only owners/representatives may)."""
+    inst = _create_institution(auth_client)
+    ch = _create_challenge(auth_client)
+    team = _create_team(auth_client, inst["id"], ch["id"], name="StudentNo")
+    student = user_client("student@aikyra.dev")
+    student_uid = _user_id(db_session, "student@aikyra.dev")
+    _create_membership(
+        db_session, student_uid, uuid.UUID(inst["id"]), "student", "active"
+    )
+    response = student.get(f"/api/teams/{team['id']}")
+    assert response.status_code == 403
+
+
+def test_get_team_owner_from_other_institution_forbidden(
+    auth_client, user_client, db_session
+):
+    """An owner of a DIFFERENT institution cannot view a team belonging to
+    another institution."""
+    inst_a = _create_institution(auth_client, name="Inst A")
+    ch = _create_challenge(auth_client)
+    team = _create_team(auth_client, inst_a["id"], ch["id"], name="TeamA")
+    outsider = user_client("outsider@aikyra.dev")
+    outsider.get("/api/institutions")  # register
+    inst_b = _create_institution(outsider, name="Inst B")  # outsider owns Inst B
+
+    response = outsider.get(f"/api/teams/{team['id']}")
+    assert response.status_code == 403
+
+
+# --- Team listing multi-tenant isolation (MEDIUM #2) ---------------------------
+
+
+def test_list_teams_empty_for_user_with_no_memberships(auth_client, user_client, db_session):
+    """A user with no active institution or team memberships sees no teams."""
+    inst = _create_institution(auth_client)
+    ch = _create_challenge(auth_client)
+    _create_team(auth_client, inst["id"], ch["id"], name="Hidden")
+    outsider = user_client("listoutsider@aikyra.dev")
+
+    response = outsider.get("/api/teams")
+    assert response.status_code == 200
+    assert response.json()["total"] == 0
+    assert response.json()["items"] == []
+
+
+def test_list_teams_cross_institution_institution_id_cannot_bypass(
+    auth_client, user_client, db_session
+):
+    """Passing an unrelated institution_id must not leak teams from a
+    different institution."""
+    inst_a = _create_institution(auth_client, name="Inst A")
+    ch = _create_challenge(auth_client)
+    _create_team(auth_client, inst_a["id"], ch["id"], name="PrivateA")
+    outsider = user_client("listbypass@aikyra.dev")
+    outsider.get("/api/institutions")  # register
+    _create_institution(outsider, name="Inst B")  # outsider owns Inst B
+
+    response = outsider.get(f"/api/teams?institution_id={inst_a['id']}")
+    assert response.status_code == 200
+    assert response.json()["total"] == 0
+
+
+def test_list_teams_team_membership_does_not_grant_other_institution_access(
+    auth_client, user_client, db_session
+):
+    """Being a member of one team does not reveal teams at institutions the
+    user is not affiliated with."""
+    inst_a = _create_institution(auth_client, name="Inst A")
+    inst_b = _create_institution(auth_client, name="Inst B")
+    ch = _create_challenge(auth_client)
+    team_a = _create_team(auth_client, inst_a["id"], ch["id"], name="TeamAtA")
+    _create_team(auth_client, inst_b["id"], ch["id"], name="TeamAtB")
+
+    member = user_client("teammember@aikyra.dev")
+    member_uid = _user_id(db_session, "teammember@aikyra.dev")
+    membership = TeamMembership(
+        id=uuid.uuid4(),
+        team_id=uuid.UUID(team_a["id"]),
+        user_id=member_uid,
+        role=TeamRole.MEMBER,
+        status=TeamMembershipStatus.ACTIVE,
+    )
+    db_session.add(membership)
+    db_session.commit()
+
+    response = member.get("/api/teams")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 1
+    assert body["items"][0]["id"] == team_a["id"]
+
+
+def test_list_teams_institution_member_sees_own_teams(auth_client, user_client, db_session):
+    """An active institution member can list teams for their institution."""
+    inst = _create_institution(auth_client)
+    ch = _create_challenge(auth_client)
+    _create_team(auth_client, inst["id"], ch["id"], name="V1")
+    _create_team(auth_client, inst["id"], ch["id"], name="V2")
+    member_user = user_client("viewer@aikyra.dev")
+    member_uid = _user_id(db_session, "viewer@aikyra.dev")
+    _create_membership(
+        db_session, member_uid, uuid.UUID(inst["id"]), "student", "active"
+    )
+
+    response = member_user.get(f"/api/teams?institution_id={inst['id']}")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 2
+    assert all(i["institution_id"] == inst["id"] for i in body["items"])
+
+
+# --- teams.created_by FK semantics (MEDIUM #1) ---------------------------------
+
+
+def test_team_creator_deletion_restricted(auth_client, db_session):
+    """Deleting a user who created a team is blocked (RESTRICT), not cascaded."""
+    import pytest
+    from sqlalchemy.exc import IntegrityError
+    from app.models.user import User
+
+    inst = _create_institution(auth_client)
+    ch = _create_challenge(auth_client)
+    _create_team(auth_client, inst["id"], ch["id"], name="CreatorLocked")
+    creator_uid = _user_id(db_session, "auth@aikyra.dev")
+
+    try:
+        db_session.query(User).filter(User.id == creator_uid).delete()
+        db_session.commit()
+        raise AssertionError(
+            "deleting a user who created a team should be restricted"
+        )
+    except IntegrityError:
+        db_session.rollback()
+
+
+def test_team_created_by_fk_is_restrict_not_cascade(auth_client):
+    """The teams.created_by FK is RESTRICT (safe), not CASCADE."""
+    from app.models.team import Team
+
+    created_by_fks = [
+        fk for fk in Team.__table__.c.created_by.foreign_keys
+    ]
+    assert created_by_fks
+    for fk in created_by_fks:
+        assert fk.ondelete == "RESTRICT"

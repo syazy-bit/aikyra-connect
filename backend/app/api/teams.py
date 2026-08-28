@@ -9,6 +9,7 @@ from app.dependencies.auth import (
     get_current_user,
     require_team_lead,
     require_team_member,
+    require_team_viewer,
 )
 from app.models.user import User
 from app.schemas.team import (
@@ -64,13 +65,12 @@ def list_teams(
     """List teams with optional filters.
 
     The authenticated user can only see teams from institutions where
-    they have an active membership, unless they are an institution
-    owner/representative at that institution.
+    they have an active institution membership, or teams they belong to.
+    Access is resolved from the database at request time — institution_id
+    from the query string only narrows, never widens, discovery.
     """
-    # For now, allow listing all teams but the frontend should filter
-    # based on user's memberships. Backend authorization for read is
-    # handled per-team in the GET /api/teams/{id} endpoint.
-    teams, total = service.list_teams(
+    teams, total = service.list_visible_teams(
+        user_id=current_user.id,
         institution_id=query.institution_id,
         challenge_id=query.challenge_id,
         status=query.status,
@@ -84,7 +84,7 @@ def list_teams(
 @router.get("/{team_id}", response_model=TeamResponse)
 def get_team(
     team_id: UUID,
-    current_user: User = Depends(require_team_member),
+    current_user: User = Depends(require_team_viewer),
     service: TeamService = Depends(get_team_service),
 ) -> TeamResponse:
     """Get team details.

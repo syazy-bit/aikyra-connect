@@ -23,6 +23,8 @@ from app.repositories.membership_repository import MembershipRepository
 from app.repositories.team_repository import TeamMembershipRepository, TeamRepository
 from app.services.auth_service import AuthService
 
+_TEAM_VIEWER_INSTITUTION_ROLES = ("owner", "representative")
+
 
 def _extract_bearer_token(authorization: str | None = Header(default=None)) -> str:
     """Extract the Bearer token from the Authorization header."""
@@ -117,6 +119,46 @@ def require_team_member(
     if membership is None:
         raise ForbiddenError(
             "You are not an active member of this team."
+        )
+    return current_user
+
+
+def require_team_viewer(
+    team_id: UUID = Path(),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> User:
+    """Authorization dependency: allows team detail access.
+
+    A user may view a team if either:
+      - they have an ACTIVE team membership, or
+      - they are an ACTIVE owner/representative of the team's institution.
+
+    The team's institution is resolved from the database via team_id — it is
+    never trusted from client input. Cross-institution access is impossible
+    because the membership lookup is scoped to the team's actual institution.
+
+    Raises NotFoundError if the team does not exist.
+    Raises ForbiddenError if the user lacks both a team membership and the
+    required institution role.
+    """
+    team_repo = TeamRepository(db)
+    team = team_repo.get_by_id(team_id)
+    if team is None:
+        raise NotFoundError("Team", team_id)
+    team_membership_repo = TeamMembershipRepository(db)
+    membership = team_membership_repo.get_active_membership(team_id, current_user.id)
+    if membership is not None:
+        return current_user
+    institution_membership_repo = MembershipRepository(db)
+    has_access = institution_membership_repo.has_role(
+        current_user.id,
+        team.institution_id,
+        _TEAM_VIEWER_INSTITUTION_ROLES,
+    )
+    if not has_access:
+        raise ForbiddenError(
+            "You do not have permission to view this team."
         )
     return current_user
 

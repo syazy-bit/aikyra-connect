@@ -1,8 +1,12 @@
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
+from app.models.institution_membership import (
+    InstitutionMembership,
+    InstitutionMembershipStatus,
+)
 from app.models.team import Team, TeamMembership, TeamMembershipStatus, TeamRole, TeamStatus
 
 
@@ -48,6 +52,57 @@ class TeamRepository:
     ) -> tuple[list[Team], int]:
         query = select(Team)
         count_query = select(func.count()).select_from(Team)
+
+        if institution_id is not None:
+            query = query.where(Team.institution_id == institution_id)
+            count_query = count_query.where(Team.institution_id == institution_id)
+        if challenge_id is not None:
+            query = query.where(Team.challenge_id == challenge_id)
+            count_query = count_query.where(Team.challenge_id == challenge_id)
+        if status is not None:
+            query = query.where(Team.status == status)
+            count_query = count_query.where(Team.status == status)
+
+        query = query.order_by(Team.created_at.desc()).offset(skip).limit(limit)
+        teams = list(self.db.execute(query).scalars().all())
+        total = self.db.execute(count_query).scalar_one()
+        return teams, total
+
+    def list_visible_teams(
+        self,
+        user_id: UUID,
+        institution_id: UUID | None = None,
+        challenge_id: UUID | None = None,
+        status: TeamStatus | None = None,
+        skip: int = 0,
+        limit: int = 20,
+    ) -> tuple[list[Team], int]:
+        """List teams the authenticated user is allowed to see.
+
+        A team is visible to a user only if they have an ACTIVE institution
+        membership at the team's institution, or an ACTIVE team membership.
+        Membership is resolved from the database — never trusted from the
+        client.
+        """
+        active_institutions = (
+            select(InstitutionMembership.institution_id).where(
+                InstitutionMembership.user_id == user_id,
+                InstitutionMembership.status == InstitutionMembershipStatus.ACTIVE,
+            )
+        )
+        active_teams = (
+            select(TeamMembership.team_id).where(
+                TeamMembership.user_id == user_id,
+                TeamMembership.status == TeamMembershipStatus.ACTIVE,
+            )
+        )
+        visible = or_(
+            Team.institution_id.in_(active_institutions),
+            Team.id.in_(active_teams),
+        )
+
+        query = select(Team).where(visible)
+        count_query = select(func.count()).select_from(Team).where(visible)
 
         if institution_id is not None:
             query = query.where(Team.institution_id == institution_id)

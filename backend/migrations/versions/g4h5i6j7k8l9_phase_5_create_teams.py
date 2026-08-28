@@ -178,19 +178,16 @@ def downgrade() -> None:
 
     # Remove faculty and student from institution_membership_role
     # PostgreSQL doesn't support DROP VALUE, so we use the safe replacement strategy
+    #
+    # NOTE: Any faculty/student rows are converted back to a valid role by the
+    # later Platform Reviewer migration (j2k3l4m5n6o7) downgrade, which runs
+    # before this one in the downgrade chain. Since that migration already
+    # maps faculty/student -> representative, no additional row conversion is
+    # needed here — and the literals 'student'/'faculty' would not be valid
+    # values in the target enum.
     op.execute(
         "CREATE TYPE institution_membership_role_old AS ENUM "
         "('owner', 'representative', 'reviewer')"
-    )
-    # Convert any faculty/student rows back to a valid role before downgrading.
-    # In practice, these would be data migrations, but for safety:
-    op.execute(
-        "UPDATE institution_memberships SET role = 'student' "
-        "WHERE role = 'faculty'"
-    )
-    op.execute(
-        "UPDATE institution_memberships SET role = 'student' "
-        "WHERE role = 'student'"
     )
     op.execute(
         "ALTER TABLE institution_memberships ALTER COLUMN role "
