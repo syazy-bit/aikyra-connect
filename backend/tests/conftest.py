@@ -18,6 +18,7 @@ import app.models.challenge  # noqa: F401,E402  # register models on Base.metada
 import app.models.institution  # noqa: F401,E402
 import app.models.user  # noqa: F401,E402
 import app.models.institution_membership  # noqa: F401,E402
+import app.models.proposal  # noqa: F401,E402
 from app.main import app  # noqa: E402
 
 
@@ -73,8 +74,9 @@ def _create_schema():
 def _clean_tables(_create_schema):
     yield
     with test_engine.begin() as conn:
-        # Truncate in FK-dependency order: memberships depend on users and
-        # institutions, so truncate memberships first.
+        # Truncate in FK-dependency order: proposals depend on teams and
+        # challenges, so truncate them first.
+        conn.execute(text('TRUNCATE TABLE "proposals" CASCADE'))
         conn.execute(text('TRUNCATE TABLE "team_memberships" CASCADE'))
         conn.execute(text('TRUNCATE TABLE "teams" CASCADE'))
         conn.execute(text('TRUNCATE TABLE "institution_memberships" CASCADE'))
