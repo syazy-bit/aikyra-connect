@@ -118,3 +118,23 @@ class TeamMembershipResponse(BaseModel):
 class TeamMembersResponse(BaseModel):
     items: list[TeamMembershipResponse]
     total: int
+
+
+class TeamInviteCreate(BaseModel):
+    """Payload for inviting a user to a team.
+
+    Only the invitee identity is client-supplied. The membership role,
+    status, invited_by and joined_at fields are all server-controlled.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    user_id: UUID
+
+
+class TransferLeadershipRequest(BaseModel):
+    """Payload for transferring team leadership to another active member."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    new_lead_user_id: UUID

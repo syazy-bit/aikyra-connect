@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Index, String, UniqueConstraint, func
+from sqlalchemy import DateTime, ForeignKey, Index, String, UniqueConstraint, func, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -128,4 +128,10 @@ class TeamMembership(Base):
         Index("ix_team_memberships_team", "team_id"),
         Index("ix_team_memberships_user", "user_id"),
         Index("ix_team_memberships_invited_by", "invited_by"),
+        Index(
+            "uq_teams_single_active_lead",
+            "team_id",
+            unique=True,
+            postgresql_where=text("role = 'lead' AND status = 'active'"),
+        ),
     )

@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.orm import Session
 
 from app.models.institution_membership import (
@@ -152,6 +152,11 @@ class TeamMembershipRepository:
             )
         ).scalar_one_or_none()
 
+    def get_membership_by_id(self, membership_id: UUID) -> TeamMembership | None:
+        return self.db.execute(
+            select(TeamMembership).where(TeamMembership.id == membership_id)
+        ).scalar_one_or_none()
+
     def get_active_membership(
         self, team_id: UUID, user_id: UUID
     ) -> TeamMembership | None:
@@ -170,6 +175,59 @@ class TeamMembershipRepository:
         if status is not None:
             query = query.where(TeamMembership.status == status)
         return list(self.db.execute(query).scalars().all())
+
+    def list_invitations_for_user(self, user_id: UUID) -> list[TeamMembership]:
+        """Return the user's pending team invitations (status='invited')."""
+        return list(
+            self.db.execute(
+                select(TeamMembership)
+                .where(
+                    TeamMembership.user_id == user_id,
+                    TeamMembership.status == TeamMembershipStatus.INVITED,
+                )
+                .order_by(TeamMembership.created_at.desc())
+            ).scalars().all()
+        )
+
+    def demote_active_lead(self, team_id: UUID) -> bool:
+        """Demote whatever active lead exists on a team to member.
+
+        Single-statement predicate update so concurrent transfers cannot
+        accidentally promote two leads — the partial unique index is the
+        final guard.
+        """
+        result = self.db.execute(
+            update(TeamMembership)
+            .where(
+                TeamMembership.team_id == team_id,
+                TeamMembership.role == TeamRole.LEAD,
+                TeamMembership.status == TeamMembershipStatus.ACTIVE,
+            )
+            .values(role=TeamRole.MEMBER)
+        )
+        return result.rowcount > 0
+
+    def promote_active_member(self, team_id: UUID, user_id: UUID) -> bool:
+        """Promote an active team member to lead.
+
+        Returns False if the target is no longer an active member, in which
+        case the caller must roll back rather than leave the team without a
+        lead.
+        """
+        result = self.db.execute(
+            update(TeamMembership)
+            .where(
+                TeamMembership.team_id == team_id,
+                TeamMembership.user_id == user_id,
+                TeamMembership.status == TeamMembershipStatus.ACTIVE,
+            )
+            .values(role=TeamRole.LEAD)
+        )
+        return result.rowcount > 0
+
+    def delete(self, membership: TeamMembership) -> None:
+        self.db.delete(membership)
+        self.db.flush()
 
     def get_lead_membership(self, team_id: UUID) -> TeamMembership | None:
         return self.db.execute(
