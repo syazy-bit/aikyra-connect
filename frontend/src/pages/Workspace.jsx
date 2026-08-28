@@ -9,7 +9,10 @@ import {
   acceptInvitation,
   declineInvitation,
 } from "../services/teamService.js";
-import { listProposals } from "../services/proposalService.js";
+import {
+  listProposals,
+  reviewProposal,
+} from "../services/proposalService.js";
 import { listChallenges, getChallengeMatches } from "../services/challengeService.js";
 import {
   listInstitutions,
@@ -282,6 +285,80 @@ function CreateTeamModal({ challenge, myInstitutions, onClose, onCreated }) {
   );
 }
 
+function RejectProposalModal({ proposal, onClose, onRejected }) {
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+
+  const confirm = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await reviewProposal(proposal.id, {
+        action: "reject",
+        review_note: note.trim() || undefined,
+      });
+      onRejected();
+    } catch (err) {
+      setError(err.message || "Could not reject the proposal. Please try again.");
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal open title="Reject proposal" onClose={onClose} wide>
+      <div className="form-group">
+        <div className="form-label-wrapper">
+          <label htmlFor="reject-proposal-note" className="form-label">
+            Review note
+          </label>
+          <span className="form-helper">
+            Explain what the team should improve — shown to the team on the
+            proposal page. Rejection is final in this phase.
+          </span>
+        </div>
+        <textarea
+          id="reject-proposal-note"
+          className="form-control"
+          value={note}
+          onChange={(event) => {
+            setNote(event.target.value);
+            setError(null);
+          }}
+          rows={4}
+          maxLength={20000}
+          placeholder="e.g. Missing impact metrics and budget breakdown."
+        />
+      </div>
+
+      {error && (
+        <Alert type="danger" title="Could not reject the proposal">
+          <p style={{ margin: 0 }}>{error}</p>
+        </Alert>
+      )}
+
+      <div className="form-footer">
+        <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={onClose}
+          disabled={busy}
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={confirm}
+          disabled={busy}
+        >
+          {busy ? "Rejecting…" : "Reject proposal"}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
 export function Workspace() {
   const { user } = useAuth();
   const displayName = user?.full_name || user?.email || "";
@@ -327,6 +404,35 @@ export function Workspace() {
     return grouped;
   }, [proposalItems]);
 
+  // --- Review rights: active owner/representative of an institution ---------
+  const reviewerInstitutionIds = useMemo(
+    () =>
+      new Set(
+        resolvedInstitutions
+          .filter(
+            (i) =>
+              i.membership_status === "active" &&
+              (i.role === "owner" || i.role === "representative")
+          )
+          .map((i) => i.id)
+      ),
+    [resolvedInstitutions]
+  );
+
+  const canReview = reviewerInstitutionIds.size > 0;
+
+  const proposalsNeedingReview = useMemo(
+    () =>
+      proposalItems.filter((proposal) => {
+        if (proposal.status !== "submitted" && proposal.status !== "under_review") {
+          return false;
+        }
+        const team = teamById.get(proposal.team_id);
+        return Boolean(team && reviewerInstitutionIds.has(team.institution_id));
+      }),
+    [proposalItems, teamById, reviewerInstitutionIds]
+  );
+
   // --- Identity: which institutions is this user active in? ---------------
   // Primary source: institution_ids of teams visible to this user (their
   // teams belong to institutions where they hold an active membership).
@@ -357,13 +463,24 @@ export function Workspace() {
         );
         resolved = toProbe.filter((_, index) => results[index].is_member);
       }
-      if (!cancelled) {
-        setResolvedInstitutions(
-          resolved.map((institution) => ({
+      // Capture the user's own role at each institution so institution-gated
+      // actions (e.g. proposal review) can be surfaced. This is the user's
+      // own membership only — never another user's data.
+      const withRoles = await Promise.all(
+        resolved.slice(0, 10).map(async (institution) => {
+          const membership = await getInstitutionMembership(institution.id).catch(
+            () => null
+          );
+          return {
             id: institution.id,
             name: institution.name,
-          }))
-        );
+            role: membership?.is_member ? membership.role : null,
+            membership_status: membership?.membership_status ?? null,
+          };
+        })
+      );
+      if (!cancelled) {
+        setResolvedInstitutions(withRoles);
         setResolvingInstitutions(false);
       }
     })();
@@ -443,6 +560,34 @@ export function Workspace() {
     } finally {
       setInviteAction({ id: null, mode: null });
     }
+  };
+
+  // --- Proposal review actions ----------------------------------------------
+  const [reviewBusy, setReviewBusy] = useState(null);
+  const [reviewError, setReviewError] = useState(null);
+  const [rejectProposal, setRejectProposal] = useState(null);
+
+  const actOnReview = async (proposal, action) => {
+    setReviewBusy(proposal.id);
+    setReviewError(null);
+    try {
+      await reviewProposal(proposal.id, { action });
+      proposals.retry();
+    } catch (err) {
+      setReviewError(
+        err.message ||
+          (action === "start_review"
+            ? "Could not start the review. Please try again."
+            : "Could not approve the proposal. Please try again.")
+      );
+    } finally {
+      setReviewBusy(null);
+    }
+  };
+
+  const handleRejected = () => {
+    setRejectProposal(null);
+    proposals.retry();
   };
 
   // --- Create-team modal ---------------------------------------------------
@@ -542,6 +687,104 @@ export function Workspace() {
               </div>
             ) : (
               <>
+                {/* Institution proposal review */}
+                {canReview && (
+                  <section
+                    className="workspace-panel"
+                    aria-labelledby="proposal-review-heading"
+                  >
+                    <PanelHeading
+                      kicker="Institution review"
+                      title="Proposal review"
+                      count={proposalsNeedingReview.length}
+                    />
+                    {proposals.loading ? (
+                      <PanelSkeleton rows={2} />
+                    ) : proposals.error ? (
+                      <PanelError
+                        title="Could not load proposals to review"
+                        onRetry={proposals.retry}
+                      />
+                    ) : proposalsNeedingReview.length === 0 ? (
+                      <div className="panel-note">
+                        No proposals awaiting your review. When a team submits a
+                        proposal, you can start the review here.
+                      </div>
+                    ) : (
+                      <>
+                        <div className="workspace-list">
+                          {proposalsNeedingReview.map((proposal) => {
+                            const team = teamById.get(proposal.team_id);
+                            const busy = reviewBusy === proposal.id;
+                            return (
+                              <div key={proposal.id} className="invite-row">
+                                <span className="invite-row-main">
+                                  <Link
+                                    href={`/proposals/${proposal.id}`}
+                                    className="invite-row-name"
+                                    style={{ textDecoration: "none" }}
+                                  >
+                                    {proposal.title}
+                                  </Link>
+                                  <span className="invite-row-meta">
+                                    {team ? `${team.name} · ` : ""}
+                                    {proposal.submitted_at
+                                      ? `Submitted ${formatDate(proposal.submitted_at)}`
+                                      : "Proposal"}
+                                  </span>
+                                </span>
+                                <StatusBadge status={proposal.status} />
+                                <span className="invite-actions">
+                                  {proposal.status === "submitted" && (
+                                    <button
+                                      type="button"
+                                      className="btn btn-primary btn-sm"
+                                      onClick={() =>
+                                        actOnReview(proposal, "start_review")
+                                      }
+                                      disabled={busy || reviewBusy !== null}
+                                    >
+                                      {busy ? "Starting…" : "Start review"}
+                                    </button>
+                                  )}
+                                  {proposal.status === "under_review" && (
+                                    <>
+                                      <button
+                                        type="button"
+                                        className="btn btn-primary btn-sm"
+                                        onClick={() => actOnReview(proposal, "accept")}
+                                        disabled={busy || reviewBusy !== null}
+                                      >
+                                        {busy ? "Approving…" : "Approve"}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="btn btn-outline btn-sm"
+                                        onClick={() => {
+                                          setReviewError(null);
+                                          setRejectProposal(proposal);
+                                        }}
+                                        disabled={busy || reviewBusy !== null}
+                                      >
+                                        Reject
+                                      </button>
+                                    </>
+                                  )}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {reviewError && (
+                          <Alert type="danger" title="Review action failed">
+                            <p style={{ margin: 0 }}>{reviewError}</p>
+                          </Alert>
+                        )}
+                      </>
+                    )}
+                  </section>
+                )}
+
                 {/* Pending invitations */}
                 {(invitations.loading ||
                   invitations.error ||
@@ -748,6 +991,15 @@ export function Workspace() {
           myInstitutions={resolvedInstitutions}
           onClose={() => setCreateTeamFor(null)}
           onCreated={handleTeamCreated}
+        />
+      )}
+
+      {/* Rejection note dialog — opened from the proposal review area */}
+      {rejectProposal && (
+        <RejectProposalModal
+          proposal={rejectProposal}
+          onClose={() => setRejectProposal(null)}
+          onRejected={handleRejected}
         />
       )}
     </div>

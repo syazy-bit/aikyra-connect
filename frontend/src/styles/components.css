@@ -419,6 +419,12 @@ textarea.form-control {
   border-color: var(--status-validated-border);
 }
 
+.status-accepted {
+  background-color: var(--status-accepted-bg);
+  color: var(--status-accepted-text);
+  border-color: var(--status-accepted-border);
+}
+
 .status-rejected {
   background-color: var(--status-rejected-bg);
   color: var(--status-rejected-text);

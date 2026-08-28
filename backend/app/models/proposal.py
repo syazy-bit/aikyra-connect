@@ -21,8 +21,9 @@ class ProposalStatus(str, enum.Enum):
 class Proposal(Base):
     """Solution proposal submitted by a team for a challenge.
 
-    CP3 makes only draft/submitted/withdrawn reachable. under_review,
-    accepted and rejected are reserved for the CP4 review workflow.
+    CP3 makes only draft/submitted/withdrawn reachable. The CP4 review
+    workflow reaches under_review (institution took the proposal into
+    review) and, as terminal states, accepted/rejected.
     """
 
     __tablename__ = "proposals"

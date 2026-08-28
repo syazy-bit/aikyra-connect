@@ -12,6 +12,8 @@ from app.schemas.proposal import (
     ProposalListQuery,
     ProposalListResponse,
     ProposalResponse,
+    ProposalReviewAction,
+    ProposalReviewRequest,
     ProposalUpdate,
 )
 from app.services.proposal_service import ProposalService
@@ -142,4 +144,44 @@ def withdraw_proposal(
     proposal = service.withdraw_proposal(
         proposal_id=proposal_id, lead_user_id=current_user.id
     )
+    return ProposalResponse.model_validate(proposal)
+
+
+@router.post("/{proposal_id}/review", response_model=ProposalResponse)
+def review_proposal(
+    proposal_id: UUID,
+    payload: ProposalReviewRequest,
+    current_user: User = Depends(get_current_user),
+    service: ProposalService = Depends(get_proposal_service),
+) -> ProposalResponse:
+    """Advance the proposal review workflow.
+
+    Actions:
+      - start_review: submitted -> under_review
+      - accept:       under_review -> accepted
+      - reject:       under_review -> rejected
+
+    Only an ACTIVE owner or representative of the proposal's team institution
+    may review (authorization resolved from the database at request time).
+    status, reviewed_at and reviewed_by are always server-controlled —
+    reviewed_at/reviewed_by are set from the authenticated reviewer at the
+    final decision.
+    """
+    action = payload.action
+    if action == ProposalReviewAction.START_REVIEW:
+        proposal = service.start_review(
+            proposal_id=proposal_id, reviewer_user_id=current_user.id
+        )
+    elif action == ProposalReviewAction.ACCEPT:
+        proposal = service.accept_proposal(
+            proposal_id=proposal_id,
+            reviewer_user_id=current_user.id,
+            review_note=payload.review_note,
+        )
+    else:
+        proposal = service.reject_proposal(
+            proposal_id=proposal_id,
+            reviewer_user_id=current_user.id,
+            review_note=payload.review_note,
+        )
     return ProposalResponse.model_validate(proposal)

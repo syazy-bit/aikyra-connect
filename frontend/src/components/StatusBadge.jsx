@@ -17,6 +17,10 @@ const STATUS_MAP = {
     label: "Under Review",
     className: "status-under_review",
   },
+  accepted: {
+    label: "Accepted",
+    className: "status-accepted",
+  },
   validated: {
     label: "Validated",
     className: "status-validated",

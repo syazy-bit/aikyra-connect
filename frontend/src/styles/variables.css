@@ -87,6 +87,10 @@
   --status-validated-text: var(--color-success-700);
   --status-validated-border: #bbf7d0;
 
+  --status-accepted-bg: var(--color-success-100);
+  --status-accepted-text: var(--color-success-700);
+  --status-accepted-border: #bbf7d0;
+
   --status-rejected-bg: var(--color-danger-100);
   --status-rejected-text: var(--color-danger-700);
   --status-rejected-border: #fecaca;

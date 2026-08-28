@@ -302,6 +302,15 @@ export function ProposalDetail() {
             {!proposal.submitted_at && (
               <span className="detail-meta-item">Draft — not yet submitted</span>
             )}
+            {proposal.reviewed_at && (
+              <span className="detail-meta-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                  <polyline points="22 4 12 14.01 9 11.01" />
+                </svg>
+                Reviewed {formatDate(proposal.reviewed_at)}
+              </span>
+            )}
           </div>
 
           {(canEdit || canSubmit || canWithdraw) && (
@@ -424,6 +433,25 @@ export function ProposalDetail() {
             <p className="proposal-section-text">{section.value}</p>
           </section>
         ))}
+
+        {/* Reviewer decision */}
+        {proposal.reviewed_at && (
+          <section
+            className="related-section"
+            aria-labelledby="proposal-review-heading"
+          >
+            <span className="section-kicker">Institution review</span>
+            <h2 id="proposal-review-heading" className="related-title">
+              Review decision
+            </h2>
+            <p className="proposal-section-text">
+              {proposal.review_note ||
+                (proposal.status === "accepted"
+                  ? "This proposal was accepted by your institution."
+                  : "This proposal was reviewed with no additional notes.")}
+            </p>
+          </section>
+        )}
 
         {/* Footer meta */}
         <footer className="proposal-meta">

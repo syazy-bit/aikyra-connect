@@ -92,3 +92,19 @@ export async function withdrawProposal(id) {
     method: "POST",
   });
 }
+
+/**
+ * Advance the proposal review workflow (CP4). Institution owner or
+ * representative of the proposal's team institution only.
+ * @param {string} id
+ * @param {{action: "start_review"|"accept"|"reject", review_note?: string}} payload
+ *        - start_review: submitted -> under_review
+ *        - accept:       under_review -> accepted
+ *        - reject:       under_review -> rejected (review_note is captured)
+ */
+export async function reviewProposal(id, payload) {
+  return apiRequest(`/api/proposals/${encodeURIComponent(id)}/review`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}

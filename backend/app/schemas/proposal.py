@@ -1,5 +1,6 @@
-"""Schemas for Phase 5 solution proposals (CP3 core)."""
+"""Schemas for Phase 5 solution proposals (CP3 core + CP4 review)."""
 
+import enum
 from datetime import datetime
 from uuid import UUID
 
@@ -77,6 +78,36 @@ class ProposalUpdate(BaseModel):
     @field_validator("approach", "resources_needed", "timeline")
     @classmethod
     def _strip_optional(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        stripped = value.strip()
+        return stripped or None
+
+
+class ProposalReviewAction(str, enum.Enum):
+    """Review actions an institution reviewer can execute (CP4)."""
+
+    START_REVIEW = "start_review"
+    ACCEPT = "accept"
+    REJECT = "reject"
+
+
+class ProposalReviewRequest(BaseModel):
+    """Payload for the review workflow.
+
+    Only the action and an optional review note are client-supplied. status,
+    reviewed_at and reviewed_by are server-controlled and rejected here, so a
+    client can never forge a review outcome.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    action: ProposalReviewAction
+    review_note: str | None = Field(default=None, max_length=20000)
+
+    @field_validator("review_note")
+    @classmethod
+    def _strip_review_note(cls, value: str | None) -> str | None:
         if value is None:
             return None
         stripped = value.strip()
