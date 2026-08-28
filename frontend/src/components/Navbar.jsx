@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import { Link, useRouter } from "../context/RouterContext.jsx";
 import { UserMenu } from "./UserMenu.jsx";
+import { useAuth } from "../context/AuthContext.jsx";
 
 export function Navbar() {
   const { currentPath, navigate } = useRouter();
+  const { isAuthenticated } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const toggleMobileMenu = () => setMobileMenuOpen((prev) => !prev);
@@ -56,6 +58,11 @@ export function Navbar() {
           <Link href="/institutions" className={`nav-link ${currentPath.startsWith("/institutions") ? "active" : ""}`} onClick={closeMobileMenu}>
             Institutions
           </Link>
+          {isAuthenticated && (
+            <Link href="/workspace" className={`nav-link ${currentPath.startsWith("/workspace") ? "active" : ""}`} onClick={closeMobileMenu}>
+              Workspace
+            </Link>
+          )}
           {mobileMenuOpen && (
             <button
               type="button"

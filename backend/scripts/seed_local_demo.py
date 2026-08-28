@@ -214,12 +214,26 @@ DEMO_USERS = [
         "full_name": "ADTU Demo Owner",
         "is_platform_reviewer": False,
     },
+    {
+        "email": "student@adtu.dev",
+        "password": "student123",
+        "full_name": "ADTU Demo Student",
+        "is_platform_reviewer": False,
+    },
 ]
 
 DEMO_MEMBERSHIPS = [
     {
         "email": "owner@adtu.dev",
         "role": InstitutionMembershipRole.OWNER,
+    },
+    # student@adtu.dev is a STUDENT member so team leads can invite them to a
+    # team — the invite endpoint only accepts users who already hold an ACTIVE
+    # faculty/student membership at the team's institution, and no API exists
+    # to grant memberships (they are seeded data only).
+    {
+        "email": "student@adtu.dev",
+        "role": InstitutionMembershipRole.STUDENT,
     },
     # Note: reviewer@aikyra.dev is a PLATFORM reviewer, not an institution member.
     # Platform reviewers verify institutions across the platform without
@@ -374,6 +388,16 @@ def main() -> None:
             f"[memberships] {memberships_created} created, "
             f"{memberships_reused} already present"
         )
+
+        # Print the student's user UUID — the team-invite API references users
+        # by user_id only (no person search exists yet), so reviewers need it
+        # to run the invite → accept journey.
+        student = user_map.get("student@adtu.dev")
+        if student is None:
+            repo = UserRepository(db)
+            student = repo.get_by_email("student@adtu.dev")
+        if student is not None:
+            print(f"[invite] student user id (use in team invite): {student.id}")
     finally:
         db.close()
 

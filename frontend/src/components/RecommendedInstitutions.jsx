@@ -12,7 +12,7 @@ const FACTOR_LABELS = {
   urgency: "Urgency context",
 };
 
-function matchTier(score) {
+export function matchTier(score) {
   if (score >= 60) return { label: "Strong match", className: "tier-strong" };
   if (score >= 35) return { label: "Promising", className: "tier-promising" };
   return { label: "Exploratory", className: "tier-exploratory" };

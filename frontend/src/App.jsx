@@ -13,6 +13,9 @@ import { InstitutionDetail } from "./pages/InstitutionDetail.jsx";
 import { RegisterInstitution } from "./pages/RegisterInstitution.jsx";
 import { Login } from "./pages/Login.jsx";
 import { Register } from "./pages/Register.jsx";
+import { Workspace } from "./pages/Workspace.jsx";
+import { TeamDetail } from "./pages/TeamDetail.jsx";
+import { ProposalDetail } from "./pages/ProposalDetail.jsx";
 
 function AppContent() {
   const { route } = useRouter();
@@ -39,6 +42,24 @@ function AppContent() {
         return (
           <ProtectedRoute>
             <RegisterInstitution />
+          </ProtectedRoute>
+        );
+      case "workspace":
+        return (
+          <ProtectedRoute>
+            <Workspace />
+          </ProtectedRoute>
+        );
+      case "team-detail":
+        return (
+          <ProtectedRoute>
+            <TeamDetail />
+          </ProtectedRoute>
+        );
+      case "proposal-detail":
+        return (
+          <ProtectedRoute>
+            <ProposalDetail />
           </ProtectedRoute>
         );
       default:

@@ -30,6 +30,7 @@ export function AuthProvider({ children }) {
         body: JSON.stringify({ email, password }),
       });
       const token = data.access_token;
+      localStorage.setItem(TOKEN_KEY, token);
       const me = await apiRequest("/api/auth/me");
       setAuth(token, me);
       return { success: true };
@@ -51,6 +52,7 @@ export function AuthProvider({ children }) {
         body: JSON.stringify({ email, password }),
       });
       const token = data.access_token;
+      localStorage.setItem(TOKEN_KEY, token);
       const me = await apiRequest("/api/auth/me");
       setAuth(token, me);
       return { success: true };

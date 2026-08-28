@@ -1,6 +1,14 @@
 import React from "react";
 
 const STATUS_MAP = {
+  draft: {
+    label: "Draft",
+    className: "status-draft",
+  },
+  withdrawn: {
+    label: "Withdrawn",
+    className: "status-withdrawn",
+  },
   submitted: {
     label: "Submitted",
     className: "status-submitted",
@@ -16,6 +24,26 @@ const STATUS_MAP = {
   rejected: {
     label: "Rejected",
     className: "status-rejected",
+  },
+  forming: {
+    label: "Forming",
+    className: "status-forming",
+  },
+  active: {
+    label: "Active",
+    className: "status-active",
+  },
+  archived: {
+    label: "Archived",
+    className: "status-archived",
+  },
+  invited: {
+    label: "Invited",
+    className: "status-invited",
+  },
+  removed: {
+    label: "Removed",
+    className: "status-removed",
   },
 };
 

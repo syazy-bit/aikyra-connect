@@ -41,6 +41,7 @@ export function RouterProvider({ children }) {
     if (path === "/register") return { name: "register", params: {}, query: params };
     if (path === "/report") return { name: "report", params: {}, query: {} };
     if (path === "/challenges") return { name: "challenges", params: {}, query: params };
+    if (path === "/workspace") return { name: "workspace", params: {}, query: {} };
 
     const challengeDetailMatch = path.match(/^\/challenges\/([^/]+)$/);
     if (challengeDetailMatch) {
@@ -48,6 +49,24 @@ export function RouterProvider({ children }) {
         name: "challenge-detail",
         params: { id: challengeDetailMatch[1] },
         query: params,
+      };
+    }
+
+    const teamDetailMatch = path.match(/^\/teams\/([^/]+)$/);
+    if (teamDetailMatch) {
+      return {
+        name: "team-detail",
+        params: { id: teamDetailMatch[1] },
+        query: {},
+      };
+    }
+
+    const proposalDetailMatch = path.match(/^\/proposals\/([^/]+)$/);
+    if (proposalDetailMatch) {
+      return {
+        name: "proposal-detail",
+        params: { id: proposalDetailMatch[1] },
+        query: {},
       };
     }
 

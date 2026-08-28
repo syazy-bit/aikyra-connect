@@ -12,8 +12,11 @@ class ProposalCreate(BaseModel):
     """Payload for creating a draft proposal.
 
     Only team/challenge identity and proposal content are client-supplied.
-    status, submitted_at, reviewed_at, reviewed_by, review_note, created_at,
-    updated_at and created_by are server-controlled and rejected here.
+    status, submitted_at, reviewed_at, reviewed_by, review_note, created_at
+    and updated_at are server-controlled and rejected here. Proposal creator
+    identity is intentionally NOT persisted (CP3 stays spec-compliant and
+    lightweight); the acting user is used only for the team-membership
+    authorization check at creation time.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -47,7 +50,9 @@ class ProposalUpdate(BaseModel):
     """Payload for editing a draft proposal.
 
     team_id and challenge_id are immutable after creation. status and all
-    lifecycle fields are never client-controlled. Optional text fields may be
+    lifecycle fields are never client-controlled. title and summary are
+    required whenever supplied — explicit null is rejected (422). The
+    optional text fields (approach, resources_needed, timeline) may be
     cleared by sending explicit null.
     """
 
@@ -61,9 +66,9 @@ class ProposalUpdate(BaseModel):
 
     @field_validator("title", "summary")
     @classmethod
-    def _strip_required(cls, value: str | None) -> str | None:
+    def _strip_required(cls, value: str | None) -> str:
         if value is None:
-            return None
+            raise ValueError("must not be null")
         stripped = value.strip()
         if not stripped:
             raise ValueError("must not be blank")

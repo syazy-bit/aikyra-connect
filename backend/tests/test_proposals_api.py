@@ -590,6 +590,24 @@ def test_edit_proposal_rejects_blank_title(auth_client):
     assert response.status_code == 422
 
 
+def test_edit_proposal_rejects_null_title_and_summary(auth_client):
+    """Editing with explicit null for required title/summary returns 422."""
+    inst, ch, team = _team_context(auth_client)
+    proposal = _create_proposal(auth_client, team["id"], ch["id"])
+    assert (
+        auth_client.patch(
+            f"/api/proposals/{proposal['id']}", json={"title": None}
+        ).status_code
+        == 422
+    )
+    assert (
+        auth_client.patch(
+            f"/api/proposals/{proposal['id']}", json={"summary": None}
+        ).status_code
+        == 422
+    )
+
+
 def test_edit_proposal_can_clear_optional_field(auth_client):
     """Sending null clears an optional text field."""
     inst, ch, team = _team_context(auth_client)

@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "../context/RouterContext.jsx";
 import { StatusBadge } from "./StatusBadge.jsx";
+import { matchTier } from "./RecommendedInstitutions.jsx";
 
 const URGENCY_LABELS = {
   low: "Low urgency",
@@ -9,7 +10,15 @@ const URGENCY_LABELS = {
   critical: "Critical urgency",
 };
 
-export function ChallengeCard({ challenge }) {
+/**
+ * Compact challenge card.
+ * Optional additive props (unused elsewhere, default-off):
+ *  - `match`     { institution, score } shown as a "match for your
+ *                institution" badge (used by the workspace rail).
+ *  - `footerAction`   extra node rendered below the meta row (e.g. a
+ *                "Create a team" button in the workspace).
+ */
+export function ChallengeCard({ challenge, match = null, footerAction }) {
   if (!challenge) return null;
   const dna = challenge.dna ?? null;
 
@@ -60,6 +69,23 @@ export function ChallengeCard({ challenge }) {
         </div>
       )}
 
+      {match && (
+        <div className="card-match-row">
+          <span className={`match-tier ${matchTier(match.score).className}`}>
+            {matchTier(match.score).label}
+          </span>
+          <span className="card-match-text">
+            Match for{" "}
+            <Link href={`/institutions/${match.institution.id}`} className="card-match-link">
+              {match.institution.name}
+            </Link>
+          </span>
+          <span className="card-match-score" aria-label={`Match score ${match.score}`}>
+            {match.score}
+          </span>
+        </div>
+      )}
+
       <p className="card-description">{challenge.description}</p>
 
       <div className="card-meta">
@@ -87,6 +113,8 @@ export function ChallengeCard({ challenge }) {
           <StatusBadge status={challenge.status} />
         </div>
       </div>
+
+      {footerAction && <div className="card-footer-action">{footerAction}</div>}
     </article>
   );
 }
