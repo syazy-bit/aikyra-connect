@@ -3,12 +3,14 @@ import { Link, useRouter } from "../context/RouterContext.jsx";
 import {
   getProject,
   updateProjectLifecycle,
+  deleteImpactMetric,
 } from "../services/projectService.js";
 import { getTeamMembers } from "../services/teamService.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { StatusBadge } from "../components/StatusBadge.jsx";
 import { SupportTypeBadge } from "../components/SupportTypeBadge.jsx";
 import { OfferSupportModal } from "../components/OfferSupportModal.jsx";
+import { ImpactMetricModal } from "../components/ImpactMetricModal.jsx";
 import { LoadingSpinner } from "../components/LoadingSpinner.jsx";
 import { Alert } from "../components/Alert.jsx";
 import { EmptyState } from "../components/EmptyState.jsx";
@@ -42,6 +44,8 @@ export function ProjectDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [offerOpen, setOfferOpen] = useState(false);
+  const [impactOpen, setImpactOpen] = useState(false);
+  const [editingMetric, setEditingMetric] = useState(null);
 
   const [members, setMembers] = useState([]);
   const [memberError, setMemberError] = useState(false);
@@ -87,6 +91,26 @@ export function ProjectDetail() {
       );
     } finally {
       setLifecycleBusy(false);
+    }
+  };
+
+  const openAddMetric = () => {
+    setEditingMetric(null);
+    setImpactOpen(true);
+  };
+
+  const openEditMetric = (metric) => {
+    setEditingMetric(metric);
+    setImpactOpen(true);
+  };
+
+  const handleDeleteMetric = async (metric) => {
+    if (!window.confirm(`Delete the impact metric "${metric.name}"?`)) return;
+    try {
+      await deleteImpactMetric(project.id, metric.id);
+      await fetchProject();
+    } catch (err) {
+      window.alert(err.message || "The impact metric could not be deleted.");
     }
   };
 
@@ -245,6 +269,74 @@ export function ProjectDetail() {
           )}
         </section>
 
+        {/* Impact metrics */}
+        <section
+          className="related-section"
+          aria-labelledby="project-impact-heading"
+        >
+          <span className="section-kicker">Measured outcomes</span>
+          <div className="panel-header">
+            <h2 id="project-impact-heading" className="related-title">
+              Impact metrics
+            </h2>
+            {isLead && (
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={openAddMetric}
+              >
+                + Add impact metric
+              </button>
+            )}
+          </div>
+
+          {project.impact?.length === 0 ? (
+            <div className="card" style={{ padding: "var(--space-4)" }}>
+              <EmptyState
+                title="No impact metrics yet"
+                description="This solution has not recorded any measured outcomes yet. Impact metrics stay editable for the whole lifecycle."
+                actionText={isLead ? "Add impact metric" : undefined}
+                onActionClick={isLead ? openAddMetric : undefined}
+              />
+            </div>
+          ) : (
+            <div className="impact-grid">
+              {(project.impact ?? []).map((metric) => (
+                <article key={metric.id} className="impact-stat">
+                  <div className="impact-value-row">
+                    <span className="impact-value">{metric.value}</span>
+                    {metric.unit && (
+                      <span className="impact-unit">{metric.unit}</span>
+                    )}
+                  </div>
+                  <span className="impact-name">{metric.name}</span>
+                  {metric.description && (
+                    <p className="impact-description">{metric.description}</p>
+                  )}
+                  {isLead && (
+                    <div className="impact-card-actions">
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => openEditMetric(metric)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-sm"
+                        onClick={() => handleDeleteMetric(metric)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  )}
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+
         {/* Support offers */}
         <section
           className="related-section"
@@ -295,6 +387,22 @@ export function ProjectDetail() {
           onClose={() => setOfferOpen(false)}
           onOffered={() => {
             setOfferOpen(false);
+            fetchProject();
+          }}
+        />
+      )}
+
+      {impactOpen && project && (
+        <ImpactMetricModal
+          project={project}
+          editing={editingMetric}
+          onClose={() => {
+            setImpactOpen(false);
+            setEditingMetric(null);
+          }}
+          onSaved={() => {
+            setImpactOpen(false);
+            setEditingMetric(null);
             fetchProject();
           }}
         />

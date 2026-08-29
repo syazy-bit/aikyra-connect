@@ -6,8 +6,10 @@ from sqlalchemy.orm import Session
 from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError
 from app.models.organization import Organization
 from app.models.project import Project, ProjectStatus
+from app.models.project_impact_metric import ProjectImpactMetric
 from app.models.support_offer import SupportOffer, SupportOfferStatus, SupportType
 from app.models.team import TeamRole
+from app.repositories.impact_metric_repository import ImpactMetricRepository
 from app.repositories.organization_repository import OrganizationRepository
 from app.repositories.project_repository import ProjectRepository
 from app.repositories.support_offer_repository import SupportOfferRepository
@@ -47,6 +49,7 @@ class ProjectService:
         self.organization_repository = OrganizationRepository(db)
         self.offer_repository = SupportOfferRepository(db)
         self.team_membership_repository = TeamMembershipRepository(db)
+        self.impact_metric_repository = ImpactMetricRepository(db)
 
     # --- Projects ----------------------------------------------------------
 
@@ -102,6 +105,7 @@ class ProjectService:
                     "created_at": offer.created_at,
                 }
             )
+        impact_metrics = self.impact_metric_repository.list_for_project(project.id)
         return {
             "id": project.id,
             "title": project.title,
@@ -111,6 +115,19 @@ class ProjectService:
             "team_name": team.name if team else "—",
             "challenge_title": challenge.title if challenge else "—",
             "offers": offer_refs,
+            "impact": [
+                {
+                    "id": metric.id,
+                    "project_id": metric.project_id,
+                    "name": metric.name,
+                    "value": metric.value,
+                    "unit": metric.unit,
+                    "description": metric.description,
+                    "created_at": metric.created_at,
+                    "updated_at": metric.updated_at,
+                }
+                for metric in impact_metrics
+            ],
             "created_at": project.created_at,
         }
 
@@ -149,6 +166,103 @@ class ProjectService:
         self._commit()
         self.db.refresh(project)
         return self.get_project(project.id)
+
+    # --- Impact metrics (CP7) ----------------------------------------------
+
+    def _require_project_lead(self, project_id: UUID, user_id: UUID) -> Project:
+        """Resolve a project and verify the caller is its ACTIVE team lead.
+
+        Authorization is resolved entirely from the database at request time:
+        the project -> its team -> the caller's ACTIVE team membership -> its
+        LEAD role. Client-supplied identity, role and membership fields are
+        never trusted.
+
+        Raises NotFoundError if the project does not exist.
+        Raises ForbiddenError if the caller is not the active team lead.
+        """
+        project = self.project_repository.get_by_id(project_id)
+        if project is None:
+            raise NotFoundError("Project", project_id)
+
+        membership = self.team_membership_repository.get_active_membership(
+            project.team_id, user_id
+        )
+        if membership is None or membership.role != TeamRole.LEAD:
+            raise ForbiddenError(
+                "Only the active team lead can manage impact metrics."
+            )
+        return project
+
+    def list_impact_metrics(self, project_id: UUID) -> list[ProjectImpactMetric]:
+        """Public listing of a project's impact metrics (newest-last)."""
+        project = self.project_repository.get_by_id(project_id)
+        if project is None:
+            raise NotFoundError("Project", project_id)
+        return self.impact_metric_repository.list_for_project(project.id)
+
+    def create_impact_metric(
+        self,
+        project_id: UUID,
+        user_id: UUID,
+        name: str,
+        value: str,
+        unit: str | None = None,
+        description: str | None = None,
+    ) -> ProjectImpactMetric:
+        self._require_project_lead(project_id, user_id)
+        try:
+            metric = self.impact_metric_repository.create(
+                {
+                    "project_id": project_id,
+                    "name": name,
+                    "value": value,
+                    "unit": unit,
+                    "description": description,
+                }
+            )
+            self._commit()
+        except IntegrityError:
+            self.db.rollback()
+            raise ConflictError("This impact metric could not be saved.") from None
+        self.db.refresh(metric)
+        return metric
+
+    def update_impact_metric(
+        self,
+        project_id: UUID,
+        metric_id: UUID,
+        user_id: UUID,
+        name: str,
+        value: str,
+        unit: str | None = None,
+        description: str | None = None,
+    ) -> ProjectImpactMetric:
+        self._require_project_lead(project_id, user_id)
+        metric = self.impact_metric_repository.get_in_project(metric_id, project_id)
+        if metric is None:
+            raise NotFoundError("ImpactMetric", metric_id)
+        self.impact_metric_repository.update(
+            metric,
+            {
+                "name": name,
+                "value": value,
+                "unit": unit,
+                "description": description,
+            },
+        )
+        self._commit()
+        self.db.refresh(metric)
+        return metric
+
+    def delete_impact_metric(
+        self, project_id: UUID, metric_id: UUID, user_id: UUID
+    ) -> None:
+        self._require_project_lead(project_id, user_id)
+        metric = self.impact_metric_repository.get_in_project(metric_id, project_id)
+        if metric is None:
+            raise NotFoundError("ImpactMetric", metric_id)
+        self.impact_metric_repository.delete(metric)
+        self._commit()
 
     # --- Organizations -----------------------------------------------------
 

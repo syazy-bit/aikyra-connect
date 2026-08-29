@@ -77,3 +77,35 @@ export async function createOffer(projectId, payload) {
     body: JSON.stringify(payload),
   });
 }
+
+/**
+ * Create an impact metric on an approved project (team lead only).
+ * @param {string} projectId
+ * @param {{name: string, value: string, unit?: string, description?: string}} payload
+ */
+export async function createImpactMetric(projectId, payload) {
+  return apiRequest(`/api/projects/${encodeURIComponent(projectId)}/impact`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+/**
+ * Update an impact metric (team lead only).
+ */
+export async function updateImpactMetric(projectId, metricId, payload) {
+  return apiRequest(
+    `/api/projects/${encodeURIComponent(projectId)}/impact/${encodeURIComponent(metricId)}`,
+    { method: "PATCH", body: JSON.stringify(payload) }
+  );
+}
+
+/**
+ * Delete an impact metric (team lead only).
+ */
+export async function deleteImpactMetric(projectId, metricId) {
+  return apiRequest(
+    `/api/projects/${encodeURIComponent(projectId)}/impact/${encodeURIComponent(metricId)}`,
+    { method: "DELETE" }
+  );
+}

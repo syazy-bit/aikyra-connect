@@ -3239,6 +3239,71 @@ textarea.form-control {
   line-height: 1.5;
 }
 
+/* ==========================================================================
+   Project Impact Metrics (CP7) — measured outcomes on approved projects
+   ========================================================================== */
+.impact-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.impact-stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-5);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-xs);
+}
+
+.impact-value-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.impact-value {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--color-teal-700);
+}
+
+.impact-unit {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.impact-name {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.impact-description {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.impact-card-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: auto;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border-subtle);
+}
+
 @media (max-width: 640px) {
   .modal-overlay { padding: var(--space-4) var(--space-2); }
   .modal-body { padding: var(--space-5); }

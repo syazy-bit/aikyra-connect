@@ -6,6 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.project import ProjectStatus
+from app.schemas.impact_metric import ImpactMetricResponse
 
 
 class OrganizationRef(BaseModel):
@@ -37,7 +38,8 @@ class ProjectListItem(BaseModel):
 
 
 class ProjectDetailResponse(BaseModel):
-    """Full public projection including the project's support offers."""
+    """Full public projection including the project's support offers and
+    impact metrics."""
 
     id: UUID
     title: str
@@ -47,6 +49,7 @@ class ProjectDetailResponse(BaseModel):
     team_name: str
     challenge_title: str
     offers: list[ProjectOfferRef]
+    impact: list[ImpactMetricResponse]
     created_at: datetime
 
 

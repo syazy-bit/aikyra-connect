@@ -22,6 +22,7 @@ import app.models.proposal  # noqa: F401,E402
 import app.models.project  # noqa: F401,E402
 import app.models.organization  # noqa: F401,E402
 import app.models.support_offer  # noqa: F401,E402
+import app.models.project_impact_metric  # noqa: F401,E402
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
