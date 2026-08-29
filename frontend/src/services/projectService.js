@@ -34,6 +34,17 @@ export async function getProject(id) {
 }
 
 /**
+ * Fetch a project's verified community funding summary (public).
+ * Funding totals are always server-computed from COMPLETED contributions in
+ * integer minor units — the client never calculates the canonical amount.
+ * @param {string} id project id
+ */
+export async function getProjectFunding(id) {
+  if (!id) throw new Error("Project ID is required");
+  return apiRequest(`/api/projects/${encodeURIComponent(id)}/funding`);
+}
+
+/**
  * Advance a project's lifecycle (prototype -> pilot -> implemented).
  * Only the project team's active lead may do this; the server enforces it.
  * @param {string} projectId

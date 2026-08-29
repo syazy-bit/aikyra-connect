@@ -5,6 +5,7 @@ import { SkeletonGrid } from "../components/SkeletonCard.jsx";
 import { Alert } from "../components/Alert.jsx";
 import { EmptyState } from "../components/EmptyState.jsx";
 import { useApiResource } from "../hooks/useApiResource.js";
+import { FundingProgress } from "../components/FundingProgress.jsx";
 
 function formatDate(dateString) {
   if (!dateString) return null;
@@ -108,6 +109,14 @@ export function Projects() {
                       <span>{project.challenge_title}</span>
                     </div>
                   </div>
+
+                  {project.funding && (
+                    <FundingProgress
+                      funding={project.funding}
+                      showSupportLink
+                      compact
+                    />
+                  )}
 
                   <div className="card-meta card-meta-secondary">
                     <span className="support-count">

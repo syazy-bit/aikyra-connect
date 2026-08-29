@@ -8,6 +8,7 @@ from app.core.database import get_db
 from app.core.exceptions import NotFoundError
 from app.dependencies.auth import get_current_user
 from app.models.user import User
+from app.schemas.funding import FundingResponse
 from app.schemas.impact_metric import (
     ImpactMetricCreate,
     ImpactMetricResponse,
@@ -209,6 +210,29 @@ def delete_impact_metric(
         project_id=project_id,
         metric_id=metric_id,
         user_id=current_user.id,
+    )
+
+
+# --- Community funding ----------------------------------------------------
+
+@router.get("/{project_id}/funding", response_model=FundingResponse)
+def get_project_funding(
+    project_id: UUID,
+    service: ProjectService = Depends(get_project_service),
+) -> FundingResponse:
+    """Public read of a project's verified community funding.
+
+    No authentication is required. Every number is computed server-side from
+    COMPLETED contributions in integer minor units (paise); no totals are ever
+    accepted from a client. The response is aggregate-only — individual
+    contributions, amounts, supporter accounts and emails are never exposed.
+    A project without a verified funding goal returns 200 with
+    `funding: null` (a safe empty response, no fabricated zeros). Unknown
+    project -> 404.
+    """
+    return FundingResponse(
+        project_id=project_id,
+        funding=service.get_public_funding(project_id),
     )
 
 

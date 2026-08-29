@@ -16,6 +16,7 @@ from app.repositories.project_report_repository import ProjectReportRepository
 from app.repositories.project_repository import ProjectRepository
 from app.repositories.support_offer_repository import SupportOfferRepository
 from app.repositories.team_repository import TeamMembershipRepository
+from app.services.funding_service import FundingService
 
 
 def _normalize_name(name: str) -> str:
@@ -53,6 +54,7 @@ class ProjectService:
         self.team_membership_repository = TeamMembershipRepository(db)
         self.impact_metric_repository = ImpactMetricRepository(db)
         self.project_report_repository = ProjectReportRepository(db)
+        self.funding_service = FundingService(db)
 
     # --- Projects ----------------------------------------------------------
 
@@ -65,9 +67,12 @@ class ProjectService:
         projects, total = self.project_repository.list_projects(
             status=status, skip=skip, limit=limit
         )
-        return [self._to_list_item(p) for p in projects], total
+        funding_map = self.funding_service.get_public_funding_for_projects(
+            [p.id for p in projects]
+        )
+        return [self._to_list_item(p, funding_map.get(p.id)) for p in projects], total
 
-    def _to_list_item(self, project: Project) -> dict:
+    def _to_list_item(self, project: Project, funding: dict | None = None) -> dict:
         institution = self.project_repository.get_institution(project.institution_id)
         team = self.project_repository.get_team(project.team_id)
         challenge = self.project_repository.get_challenge(project.challenge_id)
@@ -83,6 +88,7 @@ class ProjectService:
             "challenge_title": challenge.title if challenge else "—",
             "offer_count": len(offers),
             "has_report": report is not None,
+            "funding": funding,
             "created_at": project.created_at,
         }
 
@@ -135,6 +141,7 @@ class ProjectService:
                 for metric in impact_metrics
             ],
             "report": self._report_dict(report) if report else None,
+            "funding": self.funding_service.get_public_funding(project.id),
             "created_at": project.created_at,
         }
 
@@ -185,6 +192,17 @@ class ProjectService:
         self._commit()
         self.db.refresh(project)
         return self.get_project(project.id)
+
+    # --- Community funding -------------------------------------------------
+
+    def get_public_funding(self, project_id: UUID) -> dict | None:
+        """Server-derived funding summary for one approved solution.
+
+        Public read-only: the totals come from COMPLETED contributions in
+        integer minor units, computed by the funding service at request time.
+        Unknown project -> NotFoundError; project without a goal -> None.
+        """
+        return self.funding_service.get_public_funding(project_id)
 
     # --- Impact metrics (CP7) ----------------------------------------------
 

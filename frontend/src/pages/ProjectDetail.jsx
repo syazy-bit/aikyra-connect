@@ -16,6 +16,7 @@ import { OutcomeReportModal } from "../components/OutcomeReportModal.jsx";
 import { LoadingSpinner } from "../components/LoadingSpinner.jsx";
 import { Alert } from "../components/Alert.jsx";
 import { EmptyState } from "../components/EmptyState.jsx";
+import { FundingProgress } from "../components/FundingProgress.jsx";
 
 function formatDate(dateString) {
   if (!dateString) return null;
@@ -231,6 +232,39 @@ export function ProjectDetail() {
               >
                 Offer support
               </button>
+            </div>
+          )}
+        </section>
+
+        {/* Community funding */}
+        <section
+          className="related-section"
+          aria-labelledby="project-funding-heading"
+        >
+          <span className="section-kicker">Community funding</span>
+          <h2 id="project-funding-heading" className="related-title">
+            Verified funding
+          </h2>
+
+          {!project.funding ? (
+            <div className="card" style={{ padding: "var(--space-4)" }}>
+              <EmptyState
+                title="No verified funding goal yet"
+                description="This approved solution has not published a verified funding goal yet. When it does, its goal, progress and supporter count will appear here — always server-computed from completed contributions."
+              />
+            </div>
+          ) : (
+            <div className="card" style={{ padding: "var(--space-5)" }}>
+              <FundingProgress
+                funding={project.funding}
+                showSupportLink
+              />
+              <p className="funding-note" style={{ marginTop: "var(--space-4)" }}>
+                Funding is a verified, non-crowdfunding support surface: only
+                completed contributions are counted, and every total is
+                computed by the database at request time. Supporters remain
+                anonymous unless they choose otherwise in a future release.
+              </p>
             </div>
           )}
         </section>

@@ -18,6 +18,7 @@ import { TeamDetail } from "./pages/TeamDetail.jsx";
 import { ProposalDetail } from "./pages/ProposalDetail.jsx";
 import { Projects } from "./pages/Projects.jsx";
 import { ProjectDetail } from "./pages/ProjectDetail.jsx";
+import { ProjectFunding } from "./pages/ProjectFunding.jsx";
 import { Dashboard } from "./pages/Dashboard.jsx";
 
 function AppContent() {
@@ -69,6 +70,8 @@ function AppContent() {
         return <Projects />;
       case "project-detail":
         return <ProjectDetail />;
+      case "project-funding":
+        return <ProjectFunding />;
       case "dashboard":
         return <Dashboard />;
       default:

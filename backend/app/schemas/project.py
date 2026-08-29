@@ -6,6 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.project import ProjectStatus
+from app.schemas.funding import FundingSummary
 from app.schemas.impact_metric import ImpactMetricResponse
 from app.schemas.report import ProjectReportResponse
 
@@ -36,6 +37,7 @@ class ProjectListItem(BaseModel):
     challenge_title: str
     offer_count: int
     has_report: bool
+    funding: FundingSummary | None = None
     created_at: datetime
 
 
@@ -53,6 +55,7 @@ class ProjectDetailResponse(BaseModel):
     offers: list[ProjectOfferRef]
     impact: list[ImpactMetricResponse]
     report: ProjectReportResponse | None
+    funding: FundingSummary | None = None
     created_at: datetime
 
 

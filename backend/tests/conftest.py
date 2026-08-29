@@ -24,6 +24,8 @@ import app.models.organization  # noqa: F401,E402
 import app.models.support_offer  # noqa: F401,E402
 import app.models.project_impact_metric  # noqa: F401,E402
 import app.models.project_report  # noqa: F401,E402
+import app.models.funding_goal  # noqa: F401,E402
+import app.models.funding_contribution  # noqa: F401,E402
 from app.main import app  # noqa: E402
 
 
@@ -86,6 +88,8 @@ def _clean_tables(_create_schema):
         conn.execute(text('TRUNCATE TABLE "project_reports" CASCADE'))
         conn.execute(text('TRUNCATE TABLE "project_impact_metrics" CASCADE'))
         conn.execute(text('TRUNCATE TABLE "support_offers" CASCADE'))
+        conn.execute(text('TRUNCATE TABLE "funding_contributions" CASCADE'))
+        conn.execute(text('TRUNCATE TABLE "funding_goals" CASCADE'))
         conn.execute(text('TRUNCATE TABLE "projects" CASCADE'))
         conn.execute(text('TRUNCATE TABLE "proposals" CASCADE'))
         conn.execute(text('TRUNCATE TABLE "team_memberships" CASCADE'))
