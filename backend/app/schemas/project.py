@@ -42,11 +42,26 @@ class ProjectDetailResponse(BaseModel):
     id: UUID
     title: str
     status: ProjectStatus
+    team_id: UUID
     institution_name: str
     team_name: str
     challenge_title: str
     offers: list[ProjectOfferRef]
     created_at: datetime
+
+
+class ProjectLifecycleUpdate(BaseModel):
+    """Payload for advancing the project lifecycle (CP6).
+
+    Only the target lifecycle status is client-supplied. team_id, project_id,
+    proposal_id, institution_id, user_id and every other immutable field are
+    rejected here (extra="forbid"); authorization is resolved from the
+    authenticated user's database membership, never from the payload.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    status: ProjectStatus
 
 
 class ProjectListResponse(BaseModel):

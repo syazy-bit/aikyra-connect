@@ -89,9 +89,14 @@ def _ensure_organization(db, partner):
 
 
 def _find_first_active_project(db):
-    """Return the most recently created active project, or None."""
+    """Return the most recently created (pre-implementation) project, or None."""
     projects, _ = ProjectRepository(db).list_projects(
-        status=ProjectStatus.ACTIVE, skip=0, limit=1
+        status=ProjectStatus.PROTOTYPE, skip=0, limit=1
+    )
+    if projects:
+        return projects[0]
+    projects, _ = ProjectRepository(db).list_projects(
+        status=ProjectStatus.PILOT, skip=0, limit=1
     )
     return projects[0] if projects else None
 

@@ -37,6 +37,18 @@ const STATUS_MAP = {
     label: "Active",
     className: "status-active",
   },
+  prototype: {
+    label: "Prototype",
+    className: "status-prototype",
+  },
+  pilot: {
+    label: "Pilot",
+    className: "status-pilot",
+  },
+  implemented: {
+    label: "Implemented",
+    className: "status-implemented",
+  },
   archived: {
     label: "Archived",
     className: "status-archived",

@@ -309,7 +309,7 @@ class ProposalService:
                     "institution_id": team.institution_id,
                     "challenge_id": proposal.challenge_id,
                     "title": proposal.title,
-                    "status": ProjectStatus.ACTIVE,
+                    "status": ProjectStatus.PROTOTYPE,
                 }
             )
             self._commit()

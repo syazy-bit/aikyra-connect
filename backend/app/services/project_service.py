@@ -7,9 +7,11 @@ from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError
 from app.models.organization import Organization
 from app.models.project import Project, ProjectStatus
 from app.models.support_offer import SupportOffer, SupportOfferStatus, SupportType
+from app.models.team import TeamRole
 from app.repositories.organization_repository import OrganizationRepository
 from app.repositories.project_repository import ProjectRepository
 from app.repositories.support_offer_repository import SupportOfferRepository
+from app.repositories.team_repository import TeamMembershipRepository
 
 
 def _normalize_name(name: str) -> str:
@@ -17,6 +19,15 @@ def _normalize_name(name: str) -> str:
 
     without_punctuation = re.sub(r"[^a-zA-Z0-9]+", " ", name.lower())
     return re.sub(r"\s+", " ", without_punctuation).strip()
+
+
+# CP6 lifecycle: the only legal forward transitions. Everything else —
+# including staying put and any backwards jump — is a 409 conflict.
+PROJECT_LIFECYCLE_TRANSITIONS = {
+    ProjectStatus.PROTOTYPE: frozenset({ProjectStatus.PILOT}),
+    ProjectStatus.PILOT: frozenset({ProjectStatus.IMPLEMENTED}),
+    ProjectStatus.IMPLEMENTED: frozenset(),
+}
 
 
 class ProjectService:
@@ -35,6 +46,7 @@ class ProjectService:
         self.project_repository = ProjectRepository(db)
         self.organization_repository = OrganizationRepository(db)
         self.offer_repository = SupportOfferRepository(db)
+        self.team_membership_repository = TeamMembershipRepository(db)
 
     # --- Projects ----------------------------------------------------------
 
@@ -94,12 +106,49 @@ class ProjectService:
             "id": project.id,
             "title": project.title,
             "status": project.status,
+            "team_id": project.team_id,
             "institution_name": institution.name if institution else "—",
             "team_name": team.name if team else "—",
             "challenge_title": challenge.title if challenge else "—",
             "offers": offer_refs,
             "created_at": project.created_at,
         }
+
+    # --- Lifecycle (CP6) ---------------------------------------------------
+
+    def transition_lifecycle(
+        self, project_id: UUID, new_status: ProjectStatus, user_id: UUID
+    ) -> dict:
+        """Advance the project lifecycle as the team lead.
+
+        Authorization is resolved entirely from the database at request
+        time: the project -> its team -> the caller's ACTIVE team membership
+        -> its LEAD role. Client-supplied identity, role and membership
+        fields are never trusted.
+        """
+        project = self.project_repository.get_by_id(project_id)
+        if project is None:
+            raise NotFoundError("Project", project_id)
+
+        membership = self.team_membership_repository.get_active_membership(
+            project.team_id, user_id
+        )
+        if membership is None or membership.role != TeamRole.LEAD:
+            raise ForbiddenError(
+                "Only the active team lead can advance the project lifecycle."
+            )
+
+        allowed = PROJECT_LIFECYCLE_TRANSITIONS.get(project.status, frozenset())
+        if new_status not in allowed:
+            raise ConflictError(
+                f"Cannot transition project from '{project.status.value}' "
+                f"to '{new_status.value}'."
+            )
+
+        project.status = new_status
+        self._commit()
+        self.db.refresh(project)
+        return self.get_project(project.id)
 
     # --- Organizations -----------------------------------------------------
 
@@ -147,8 +196,8 @@ class ProjectService:
         project = self.project_repository.get_by_id(project_id)
         if project is None:
             raise NotFoundError("Project", project_id)
-        if project.status != ProjectStatus.ACTIVE:
-            raise ConflictError("This project is not open to support offers.")
+        if project.status == ProjectStatus.IMPLEMENTED:
+            raise ConflictError("This project is no longer open to support offers.")
 
         organization = self.organization_repository.get_by_manager(user_id)
         if organization is None:

@@ -958,6 +958,7 @@ export function Workspace() {
                               {project.title}
                             </Link>
                             <span className="invite-row-meta">
+                              <StatusBadge status={project.status} />{" "}
                               {project.institution_name}
                               {" · "}
                               {project.offer_count === 0

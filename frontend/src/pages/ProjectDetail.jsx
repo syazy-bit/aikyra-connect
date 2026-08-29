@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { Link, useRouter } from "../context/RouterContext.jsx";
-import { getProject } from "../services/projectService.js";
+import {
+  getProject,
+  updateProjectLifecycle,
+} from "../services/projectService.js";
+import { getTeamMembers } from "../services/teamService.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { StatusBadge } from "../components/StatusBadge.jsx";
 import { SupportTypeBadge } from "../components/SupportTypeBadge.jsx";
@@ -18,9 +22,20 @@ function formatDate(dateString) {
   });
 }
 
+const LIFECYCLE_STEPS = [
+  { key: "prototype", label: "Prototype" },
+  { key: "pilot", label: "Pilot" },
+  { key: "implemented", label: "Implemented" },
+];
+
+const NEXT_LIFECYCLE = {
+  prototype: { status: "pilot", label: "Advance to Pilot" },
+  pilot: { status: "implemented", label: "Mark as Implemented" },
+};
+
 export function ProjectDetail() {
   const { route } = useRouter();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const projectId = route.params.id;
 
   const [project, setProject] = useState(null);
@@ -28,12 +43,26 @@ export function ProjectDetail() {
   const [error, setError] = useState(null);
   const [offerOpen, setOfferOpen] = useState(false);
 
+  const [members, setMembers] = useState([]);
+  const [memberError, setMemberError] = useState(false);
+  const [lifecycleBusy, setLifecycleBusy] = useState(false);
+  const [lifecycleError, setLifecycleError] = useState(null);
+
   const fetchProject = () => {
     if (!projectId) return;
     setLoading(true);
     setError(null);
+    setLifecycleError(null);
     getProject(projectId)
-      .then(setProject)
+      .then(async (data) => {
+        setProject(data);
+        if (data.team_id) {
+          const memberResult = await getTeamMembers(data.team_id).catch(() => null);
+          const items = memberResult?.items ?? [];
+          setMembers(items);
+          setMemberError(!memberResult);
+        }
+      })
       .catch((err) => {
         setError(
           err.message ||
@@ -42,6 +71,23 @@ export function ProjectDetail() {
         setProject(null);
       })
       .finally(() => setLoading(false));
+  };
+
+  const advanceLifecycle = async () => {
+    const next = NEXT_LIFECYCLE[project.status];
+    if (!next) return;
+    setLifecycleBusy(true);
+    setLifecycleError(null);
+    try {
+      await updateProjectLifecycle(project.id, next.status);
+      await fetchProject();
+    } catch (err) {
+      setLifecycleError(
+        err.message || "The project lifecycle could not be advanced."
+      );
+    } finally {
+      setLifecycleBusy(false);
+    }
   };
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -89,6 +135,14 @@ export function ProjectDetail() {
   }
 
   const offers = project.offers ?? [];
+  const currentIndex = LIFECYCLE_STEPS.findIndex(
+    (step) => step.key === project.status
+  );
+  const isLead =
+    isAuthenticated &&
+    !memberError &&
+    members.some((m) => m.user_id === user.id && m.role === "lead");
+  const nextAdvance = NEXT_LIFECYCLE[project.status];
 
   return (
     <div className="detail-page">
@@ -130,6 +184,64 @@ export function ProjectDetail() {
                 Offer support
               </button>
             </div>
+          )}
+        </section>
+
+        {/* Project lifecycle */}
+        <section
+          className="lifecycle-card"
+          aria-labelledby="project-lifecycle-heading"
+        >
+          <h2 id="project-lifecycle-heading" className="sr-only">
+            Project lifecycle
+          </h2>
+          <ol className="lifecycle-steps">
+            {LIFECYCLE_STEPS.map((step, index) => {
+              let state = "is-future";
+              if (index < currentIndex) state = "is-complete";
+              if (index === currentIndex) state = "is-current";
+              return (
+                <li
+                  key={step.key}
+                  className={`lifecycle-step ${state}`}
+                  aria-current={index === currentIndex ? "step" : undefined}
+                >
+                  <span className="journey-dot" aria-hidden="true">
+                    {index < currentIndex ? "✓" : index + 1}
+                  </span>
+                  <span className="journey-label">{step.label}</span>
+                  {index < LIFECYCLE_STEPS.length - 1 && (
+                    <span className="lifecycle-sep" aria-hidden="true">
+                      →
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+          <div className="lifecycle-actions">
+            {nextAdvance && isLead ? (
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={lifecycleBusy}
+                onClick={advanceLifecycle}
+              >
+                {lifecycleBusy ? "Updating…" : nextAdvance.label}
+              </button>
+            ) : (
+              !nextAdvance && (
+                <span className="lifecycle-note">
+                  This solution has been fully implemented and is now closed to
+                  further lifecycle changes.
+                </span>
+              )
+            )}
+          </div>
+          {lifecycleError && (
+            <Alert type="danger" title="Could not advance">
+              <p style={{ marginBottom: 0 }}>{lifecycleError}</p>
+            </Alert>
           )}
         </section>
 

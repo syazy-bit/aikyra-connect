@@ -10,14 +10,16 @@ from app.core.database import Base
 
 
 class ProjectStatus(str, enum.Enum):
-    """Lifecycle of an approved solution project.
+    """Lifecycle of an approved solution project (CP6).
 
-    A project is created automatically when a proposal is accepted. It is
-    the public-facing 'approved solution' that industry/NGO organizations
-    can support. Only 'active' is reachable in the MVP.
+    A project is created automatically when a proposal is accepted and
+    starts at 'prototype'. The team lead advances it through the lifecycle
+    (prototype -> pilot -> implemented). 'implemented' is terminal.
     """
 
-    ACTIVE = "active"
+    PROTOTYPE = "prototype"
+    PILOT = "pilot"
+    IMPLEMENTED = "implemented"
 
 
 class Project(Base):
@@ -60,8 +62,8 @@ class Project(Base):
             values_callable=lambda e: [m.value for m in e],
         ),
         nullable=False,
-        default=ProjectStatus.ACTIVE,
-        server_default=ProjectStatus.ACTIVE.value,
+        default=ProjectStatus.PROTOTYPE,
+        server_default=ProjectStatus.PROTOTYPE.value,
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

@@ -34,6 +34,20 @@ export async function getProject(id) {
 }
 
 /**
+ * Advance a project's lifecycle (prototype -> pilot -> implemented).
+ * Only the project team's active lead may do this; the server enforces it.
+ * @param {string} projectId
+ * @param {"prototype" | "pilot" | "implemented"} status
+ */
+export async function updateProjectLifecycle(projectId, status) {
+  if (!projectId) throw new Error("Project ID is required");
+  return apiRequest(`/api/projects/${encodeURIComponent(projectId)}/lifecycle`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
+}
+
+/**
  * Fetch the authenticated user's managed organization (or null).
  */
 export async function getMyOrganization() {

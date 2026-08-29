@@ -10,6 +10,7 @@ from app.dependencies.auth import get_current_user
 from app.models.user import User
 from app.schemas.project import (
     ProjectDetailResponse,
+    ProjectLifecycleUpdate,
     ProjectListItem,
     ProjectListQuery,
     ProjectListResponse,
@@ -88,3 +89,25 @@ def create_offer(
         message=payload.message,
     )
     return SupportOfferResponse.model_validate(offer)
+
+
+@router.patch("/{project_id}/lifecycle", response_model=ProjectDetailResponse)
+def update_project_lifecycle(
+    project_id: UUID,
+    payload: ProjectLifecycleUpdate,
+    current_user: User = Depends(get_current_user),
+    service: ProjectService = Depends(get_project_service),
+) -> ProjectDetailResponse:
+    """Advance the project lifecycle (prototype -> pilot -> implemented).
+
+    Only the active team lead may advance it (authorization resolved from
+    the database via the project's team membership). The requested status is
+    the whole payload — immutable identity fields are rejected (422). Invalid
+    transitions return 409; the project is returned in its updated state.
+    """
+    project = service.transition_lifecycle(
+        project_id=project_id,
+        new_status=payload.status,
+        user_id=current_user.id,
+    )
+    return ProjectDetailResponse(**project)
