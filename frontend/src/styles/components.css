@@ -1,7 +1,8 @@
 /* --- Component Styles --- */
 
 /* ==========================================================================
-   Navigation Bar
+   Navigation Bar — AIKYRA product shell
+   Three-column layout: brand (left) | navigation (center) | actions (right).
    ========================================================================== */
 .navbar {
   position: sticky;
@@ -11,20 +12,26 @@
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-xs);
   padding: var(--space-3) 0;
-  transition: all var(--transition-fast);
+  transition: box-shadow var(--transition-fast), border-color var(--transition-fast);
 }
 
 .navbar-inner {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
+  gap: var(--space-6);
 }
 
+/* --- Brand --- */
 .navbar-brand {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  padding: var(--space-1);
+  margin: calc(-1 * var(--space-1));
+  border-radius: var(--radius-md);
   text-decoration: none;
   color: var(--text-primary);
 }
@@ -33,12 +40,17 @@
   text-decoration: none;
 }
 
+.navbar-brand:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
 .brand-mark {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   background: linear-gradient(135deg, var(--color-teal-700) 0%, var(--color-slate-900) 100%);
   color: var(--color-white);
   border-radius: var(--radius-md);
@@ -70,51 +82,96 @@
   color: var(--color-teal-700);
 }
 
+.navbar-brand:hover .brand-title {
+  color: var(--color-teal-800);
+}
+
+.navbar-brand.is-active .brand-title {
+  color: var(--color-teal-700);
+}
+
+.navbar-brand.is-active .brand-text {
+  position: relative;
+}
+
+.navbar-brand.is-active .brand-text::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -3px;
+  height: 2px;
+  background-color: var(--color-teal-600);
+  border-radius: var(--radius-full);
+}
+
+/* --- Navigation --- */
 .nav-links {
   display: flex;
   align-items: center;
-  gap: var(--space-6);
+  justify-content: center;
+  gap: var(--space-2);
   list-style: none;
 }
 
 .nav-link {
+  display: inline-flex;
+  align-items: center;
   font-size: 0.9375rem;
   font-weight: 500;
   color: var(--text-secondary);
   text-decoration: none;
-  padding: var(--space-2) var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
   position: relative;
-  transition: color var(--transition-fast);
+  white-space: nowrap;
+  transition: color var(--transition-fast), background-color var(--transition-fast);
 }
 
 .nav-link:hover {
-  color: var(--text-primary);
+  color: var(--color-teal-800);
+  background-color: var(--color-teal-50);
   text-decoration: none;
+}
+
+.nav-link:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
 }
 
 .nav-link.active {
   color: var(--color-teal-700);
+  background-color: var(--color-teal-50);
   font-weight: 600;
 }
 
 .nav-link.active::after {
   content: '';
   position: absolute;
-  bottom: -4px;
-  left: 0;
-  right: 0;
+  bottom: 0;
+  left: var(--space-3);
+  right: var(--space-3);
   height: 2px;
-  background-color: var(--color-teal-700);
+  background-color: var(--color-teal-600);
   border-radius: var(--radius-full);
 }
 
+/* --- Right-side actions --- */
 .nav-actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: var(--space-3);
 }
 
-/* Mobile Nav Toggle */
+/* Compact auth buttons inside the header (Login / Register). */
+.nav-actions .btn {
+  padding: 0.5rem 0.9375rem;
+  font-size: 0.875rem;
+  border-radius: var(--radius-md);
+}
+
+/* --- Mobile Nav Toggle --- */
 .mobile-nav-toggle {
   display: none;
   background: none;
@@ -123,13 +180,34 @@
   padding: var(--space-2);
   cursor: pointer;
   color: var(--text-primary);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
 }
 
-@media (max-width: 768px) {
+.mobile-nav-toggle:hover {
+  background-color: var(--bg-surface-subtle);
+  border-color: var(--border-medium);
+}
+
+.mobile-nav-toggle:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+/* Mobile-only content living inside the collapsed menu. */
+.mobile-nav-extra {
+  display: none;
+}
+
+@media (max-width: 900px) {
   .mobile-nav-toggle {
     display: flex;
     align-items: center;
     justify-content: center;
+  }
+
+  .navbar-inner {
+    grid-template-columns: auto 1fr auto;
+    gap: var(--space-3);
   }
 
   .nav-links {
@@ -140,11 +218,13 @@
     right: 0;
     background-color: var(--bg-surface);
     border-bottom: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-md);
     padding: var(--space-4);
     flex-direction: column;
     align-items: stretch;
-    gap: var(--space-2);
-    box-shadow: var(--shadow-md);
+    gap: var(--space-1);
+    max-height: calc(100vh - 4rem);
+    overflow-y: auto;
   }
 
   .nav-links.open {
@@ -154,14 +234,70 @@
   .nav-link {
     padding: var(--space-3) var(--space-2);
     border-radius: var(--radius-md);
+    font-size: 1rem;
   }
 
   .nav-link:hover {
     background-color: var(--bg-surface-subtle);
   }
 
+  .nav-link.active::after {
+    bottom: 50%;
+    transform: translateY(50%);
+    left: 0;
+    right: auto;
+    width: 3px;
+    height: 1.5rem;
+  }
+
   .nav-actions {
     display: none;
+  }
+
+  .mobile-nav-extra {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-top: var(--space-4);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .mobile-nav-auth {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .mobile-nav-user {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) 0;
+    color: var(--text-primary);
+  }
+
+  .mobile-nav-user-name {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* Tighter nav spacing on medium desktop so links never crowd. */
+@media (min-width: 901px) and (max-width: 1120px) {
+  .navbar-inner {
+    gap: var(--space-4);
+  }
+
+  .nav-links {
+    gap: var(--space-1);
+  }
+
+  .nav-link {
+    padding: var(--space-2) var(--space-2);
   }
 }
 

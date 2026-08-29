@@ -1,21 +1,47 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useRouter } from "../context/RouterContext.jsx";
 import { UserMenu } from "./UserMenu.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 
 export function Navbar() {
   const { currentPath, navigate } = useRouter();
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const toggleMobileMenu = () => setMobileMenuOpen((prev) => !prev);
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
+  const handleMobileLogout = () => {
+    closeMobileMenu();
+    logout();
+    navigate("/");
+  };
+
+  // Close the mobile menu on Escape for keyboard users.
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") closeMobileMenu();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [mobileMenuOpen]);
+
+  // Auth state is only ever read from AuthContext — never hardcoded.
+  const isHome = currentPath === "/";
+  const displayName = user?.full_name || user?.email || "Account";
+
   return (
     <header className="navbar" role="banner">
       <div className="container navbar-inner">
-        {/* Brand */}
-        <Link href="/" className="navbar-brand" onClick={closeMobileMenu} aria-label="Aikyra Home">
+        {/* Brand — always returns to the home page. */}
+        <Link
+          href="/"
+          className={`navbar-brand${isHome ? " is-active" : ""}`}
+          onClick={closeMobileMenu}
+          aria-label="Aikyra Home"
+          aria-current={isHome ? "page" : undefined}
+        >
           <div className="brand-mark" aria-hidden="true">A</div>
           <div className="brand-text">
             <span className="brand-title">AIKYRA</span>
@@ -29,6 +55,7 @@ export function Navbar() {
           className="mobile-nav-toggle"
           onClick={toggleMobileMenu}
           aria-expanded={mobileMenuOpen}
+          aria-controls="primary-navigation"
           aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -47,16 +74,10 @@ export function Navbar() {
           </svg>
         </button>
 
-        {/* Navigation Links */}
-        <nav className={`nav-links ${mobileMenuOpen ? "open" : ""}`} role="navigation" aria-label="Main Navigation">
-          <Link href="/" className={`nav-link ${currentPath === "/" ? "active" : ""}`} onClick={closeMobileMenu}>
-            Home
-          </Link>
+        {/* Navigation Links (collapses into the mobile menu below the breakpoint) */}
+        <nav id="primary-navigation" className={`nav-links ${mobileMenuOpen ? "open" : ""}`} aria-label="Main Navigation">
           <Link href="/challenges" className={`nav-link ${currentPath === "/challenges" ? "active" : ""}`} onClick={closeMobileMenu}>
-            Community Challenges
-          </Link>
-          <Link href="/institutions" className={`nav-link ${currentPath.startsWith("/institutions") ? "active" : ""}`} onClick={closeMobileMenu}>
-            Institutions
+            Challenges
           </Link>
           <Link href="/projects" className={`nav-link ${currentPath.startsWith("/projects") ? "active" : ""}`} onClick={closeMobileMenu}>
             Approved Solutions
@@ -64,16 +85,20 @@ export function Navbar() {
           <Link href="/impact" className={`nav-link ${currentPath === "/impact" ? "active" : ""}`} onClick={closeMobileMenu}>
             Impact
           </Link>
+          <Link href="/institutions" className={`nav-link ${currentPath.startsWith("/institutions") ? "active" : ""}`} onClick={closeMobileMenu}>
+            Institutions
+          </Link>
           {isAuthenticated && (
             <Link href="/workspace" className={`nav-link ${currentPath.startsWith("/workspace") ? "active" : ""}`} onClick={closeMobileMenu}>
               Workspace
             </Link>
           )}
-          {mobileMenuOpen && (
+
+          {/* Mobile-only: report + authentication actions */}
+          <div className="mobile-nav-extra">
             <button
               type="button"
               className="btn btn-primary btn-block"
-              style={{ marginTop: "var(--space-2)" }}
               onClick={() => {
                 closeMobileMenu();
                 navigate("/report");
@@ -81,10 +106,35 @@ export function Navbar() {
             >
               Report a Problem
             </button>
-          )}
+
+            <div className="mobile-nav-auth">
+              {isAuthenticated ? (
+                <>
+                  <div className="mobile-nav-user">
+                    <span className="user-avatar" aria-hidden="true">
+                      {displayName.charAt(0).toUpperCase()}
+                    </span>
+                    <span className="mobile-nav-user-name">{displayName}</span>
+                  </div>
+                  <button type="button" className="btn btn-outline btn-block" onClick={handleMobileLogout}>
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link href="/login" className="btn btn-outline btn-block" onClick={closeMobileMenu}>
+                    Login
+                  </Link>
+                  <Link href="/register" className="btn btn-primary btn-block" onClick={closeMobileMenu}>
+                    Register
+                  </Link>
+                </>
+              )}
+            </div>
+          </div>
         </nav>
 
-        {/* User Menu / Auth Actions */}
+        {/* Desktop User Menu / Auth Actions */}
         <div className="nav-actions">
           <UserMenu />
         </div>
