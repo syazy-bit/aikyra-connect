@@ -4,6 +4,7 @@ import {
   getProject,
   updateProjectLifecycle,
   deleteImpactMetric,
+  deleteOutcomeReport,
 } from "../services/projectService.js";
 import { getTeamMembers } from "../services/teamService.js";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -11,6 +12,7 @@ import { StatusBadge } from "../components/StatusBadge.jsx";
 import { SupportTypeBadge } from "../components/SupportTypeBadge.jsx";
 import { OfferSupportModal } from "../components/OfferSupportModal.jsx";
 import { ImpactMetricModal } from "../components/ImpactMetricModal.jsx";
+import { OutcomeReportModal } from "../components/OutcomeReportModal.jsx";
 import { LoadingSpinner } from "../components/LoadingSpinner.jsx";
 import { Alert } from "../components/Alert.jsx";
 import { EmptyState } from "../components/EmptyState.jsx";
@@ -46,6 +48,8 @@ export function ProjectDetail() {
   const [offerOpen, setOfferOpen] = useState(false);
   const [impactOpen, setImpactOpen] = useState(false);
   const [editingMetric, setEditingMetric] = useState(null);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [editingReport, setEditingReport] = useState(null);
 
   const [members, setMembers] = useState([]);
   const [memberError, setMemberError] = useState(false);
@@ -111,6 +115,26 @@ export function ProjectDetail() {
       await fetchProject();
     } catch (err) {
       window.alert(err.message || "The impact metric could not be deleted.");
+    }
+  };
+
+  const openAddReport = () => {
+    setEditingReport(null);
+    setReportOpen(true);
+  };
+
+  const openEditReport = (report) => {
+    setEditingReport(report);
+    setReportOpen(true);
+  };
+
+  const handleDeleteReport = async () => {
+    if (!window.confirm("Delete this project's outcome report?")) return;
+    try {
+      await deleteOutcomeReport(project.id);
+      await fetchProject();
+    } catch (err) {
+      window.alert(err.message || "The outcome report could not be deleted.");
     }
   };
 
@@ -379,6 +403,94 @@ export function ProjectDetail() {
             </div>
           )}
         </section>
+
+        {/* Solution outcome report */}
+        <section
+          className="related-section"
+          aria-labelledby="project-report-heading"
+        >
+          <span className="section-kicker">Final outcome</span>
+          <div className="panel-header">
+            <h2 id="project-report-heading" className="related-title">
+              Solution outcome report
+            </h2>
+            {isLead && project.status === "implemented" && !project.report && (
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={openAddReport}
+              >
+                + Write outcome report
+              </button>
+            )}
+          </div>
+
+          {project.report ? (
+            <article className="report-doc">
+              <div className="report-actions">
+                {isLead && (
+                  <>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => openEditReport(project.report)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-outline btn-sm"
+                      onClick={handleDeleteReport}
+                    >
+                      Delete
+                    </button>
+                  </>
+                )}
+              </div>
+              <h3 className="report-summary">{project.report.summary}</h3>
+              {project.report.results && (
+                <div className="report-block">
+                  <span className="report-block-label">Results</span>
+                  <p className="report-block-text">{project.report.results}</p>
+                </div>
+              )}
+              {project.report.lessons_learned && (
+                <div className="report-block">
+                  <span className="report-block-label">Lessons learned</span>
+                  <p className="report-block-text">
+                    {project.report.lessons_learned}
+                  </p>
+                </div>
+              )}
+              {project.report.next_steps && (
+                <div className="report-block">
+                  <span className="report-block-label">Next steps</span>
+                  <p className="report-block-text">{project.report.next_steps}</p>
+                </div>
+              )}
+            </article>
+          ) : project.status !== "implemented" ? (
+            <div className="card" style={{ padding: "var(--space-4)" }}>
+              <EmptyState
+                title="Outcome report pending"
+                description="The outcome report is written once this solution is marked implemented."
+              />
+            </div>
+          ) : (
+            <div className="card" style={{ padding: "var(--space-4)" }}>
+              <EmptyState
+                title="No outcome report yet"
+                description={
+                  isLead
+                    ? "This solution is implemented. Write the outcome report to close the loop."
+                    : "This implemented solution has not published an outcome report yet."
+                }
+                actionText={isLead ? "Write outcome report" : undefined}
+                onActionClick={isLead ? openAddReport : undefined}
+              />
+            </div>
+          )}
+        </section>
       </div>
 
       {offerOpen && project && (
@@ -403,6 +515,22 @@ export function ProjectDetail() {
           onSaved={() => {
             setImpactOpen(false);
             setEditingMetric(null);
+            fetchProject();
+          }}
+        />
+      )}
+
+      {reportOpen && project && (
+        <OutcomeReportModal
+          project={project}
+          report={editingReport}
+          onClose={() => {
+            setReportOpen(false);
+            setEditingReport(null);
+          }}
+          onSaved={() => {
+            setReportOpen(false);
+            setEditingReport(null);
             fetchProject();
           }}
         />

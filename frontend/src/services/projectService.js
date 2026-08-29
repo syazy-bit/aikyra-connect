@@ -109,3 +109,36 @@ export async function deleteImpactMetric(projectId, metricId) {
     { method: "DELETE" }
   );
 }
+
+/**
+ * Create the outcome report for an implemented project (team lead only).
+ * A report is a project-scoped singleton; the server requires the project to
+ * be at the 'implemented' stage (409 otherwise).
+ * @param {string} projectId
+ * @param {{summary: string, results?: string, lessons_learned?: string, next_steps?: string}} payload
+ */
+export async function createOutcomeReport(projectId, payload) {
+  return apiRequest(`/api/projects/${encodeURIComponent(projectId)}/report`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+/**
+ * Update a project's outcome report (team lead only).
+ */
+export async function updateOutcomeReport(projectId, payload) {
+  return apiRequest(`/api/projects/${encodeURIComponent(projectId)}/report`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+/**
+ * Delete a project's outcome report (team lead only).
+ */
+export async function deleteOutcomeReport(projectId) {
+  return apiRequest(`/api/projects/${encodeURIComponent(projectId)}/report`, {
+    method: "DELETE",
+  });
+}

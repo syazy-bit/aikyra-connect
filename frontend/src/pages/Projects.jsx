@@ -117,6 +117,11 @@ export function Projects() {
                             project.offer_count === 1 ? "" : "s"
                           }`}
                     </span>
+                    {project.has_report && (
+                      <span className="reported-chip" title="Outcome report published">
+                        ✓ Outcome reported
+                      </span>
+                    )}
                     <span>{formatDate(project.created_at)}</span>
                   </div>
                 </article>

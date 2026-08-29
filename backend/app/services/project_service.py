@@ -7,10 +7,12 @@ from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError
 from app.models.organization import Organization
 from app.models.project import Project, ProjectStatus
 from app.models.project_impact_metric import ProjectImpactMetric
+from app.models.project_report import ProjectReport
 from app.models.support_offer import SupportOffer, SupportOfferStatus, SupportType
 from app.models.team import TeamRole
 from app.repositories.impact_metric_repository import ImpactMetricRepository
 from app.repositories.organization_repository import OrganizationRepository
+from app.repositories.project_report_repository import ProjectReportRepository
 from app.repositories.project_repository import ProjectRepository
 from app.repositories.support_offer_repository import SupportOfferRepository
 from app.repositories.team_repository import TeamMembershipRepository
@@ -50,6 +52,7 @@ class ProjectService:
         self.offer_repository = SupportOfferRepository(db)
         self.team_membership_repository = TeamMembershipRepository(db)
         self.impact_metric_repository = ImpactMetricRepository(db)
+        self.project_report_repository = ProjectReportRepository(db)
 
     # --- Projects ----------------------------------------------------------
 
@@ -69,6 +72,7 @@ class ProjectService:
         team = self.project_repository.get_team(project.team_id)
         challenge = self.project_repository.get_challenge(project.challenge_id)
         offers = self.offer_repository.list_for_project(project.id)
+        report = self.project_report_repository.get_by_project(project.id)
         return {
             "id": project.id,
             "title": project.title,
@@ -78,6 +82,7 @@ class ProjectService:
             "team_name": team.name if team else "—",
             "challenge_title": challenge.title if challenge else "—",
             "offer_count": len(offers),
+            "has_report": report is not None,
             "created_at": project.created_at,
         }
 
@@ -106,6 +111,7 @@ class ProjectService:
                 }
             )
         impact_metrics = self.impact_metric_repository.list_for_project(project.id)
+        report = self.project_report_repository.get_by_project(project.id)
         return {
             "id": project.id,
             "title": project.title,
@@ -128,7 +134,20 @@ class ProjectService:
                 }
                 for metric in impact_metrics
             ],
+            "report": self._report_dict(report) if report else None,
             "created_at": project.created_at,
+        }
+
+    def _report_dict(self, report: ProjectReport) -> dict:
+        return {
+            "id": report.id,
+            "project_id": report.project_id,
+            "summary": report.summary,
+            "results": report.results,
+            "lessons_learned": report.lessons_learned,
+            "next_steps": report.next_steps,
+            "created_at": report.created_at,
+            "updated_at": report.updated_at,
         }
 
     # --- Lifecycle (CP6) ---------------------------------------------------
@@ -336,6 +355,114 @@ class ProjectService:
             raise ConflictError("This support offer could not be saved.") from None
         self.db.refresh(offer)
         return offer
+
+    # --- Outcome report (CP8) ----------------------------------------------
+
+    def get_project_report(self, project_id: UUID) -> ProjectReport:
+        """Public read of a project's outcome report.
+
+        Public but project-scoped: the report is a singleton per project and
+        is reached through the project's URL only. Unknown project -> 404;
+        project without a report -> 404.
+        """
+        self._require_project(project_id)
+        return self._require_report_exists(project_id)
+
+    def create_project_report(
+        self,
+        project_id: UUID,
+        user_id: UUID,
+        summary: str,
+        results: str | None = None,
+        lessons_learned: str | None = None,
+        next_steps: str | None = None,
+    ) -> ProjectReport:
+        """Write the project's outcome report.
+
+        Only the active team lead may do this, and only once the project is
+        'implemented' (409 otherwise). A report is a 1:1 project singleton:
+        creating a second one is a 409 conflict. Authorization is resolved
+        entirely from the database (project -> team -> ACTIVE membership ->
+        LEAD role); the project is taken from the URL path, never the payload.
+        """
+        project = self._require_project_lead(project_id, user_id)
+        if project.status != ProjectStatus.IMPLEMENTED:
+            raise ConflictError(
+                "An outcome report can only be written once the project is implemented."
+            )
+        if self.project_report_repository.get_by_project(project.id) is not None:
+            raise ConflictError("This project already has an outcome report.")
+
+        try:
+            report = self.project_report_repository.create(
+                {
+                    "project_id": project.id,
+                    "summary": summary,
+                    "results": results,
+                    "lessons_learned": lessons_learned,
+                    "next_steps": next_steps,
+                }
+            )
+            self._commit()
+        except IntegrityError:
+            self.db.rollback()
+            raise ConflictError("This project already has an outcome report.") from None
+        self.db.refresh(report)
+        return report
+
+    def update_project_report(
+        self,
+        project_id: UUID,
+        user_id: UUID,
+        summary: str,
+        results: str | None = None,
+        lessons_learned: str | None = None,
+        next_steps: str | None = None,
+    ) -> ProjectReport:
+        """Edit the project's outcome report.
+
+        Lead-only, exactly like create. The report is project-scoped: the
+        URL's project decides which report is edited; there is no separate
+        report-ID route that could reach another project's report. A project
+        without a report -> 404.
+        """
+        self._require_project_lead(project_id, user_id)
+        report = self._require_report_exists(project_id)
+        self.project_report_repository.update(
+            report,
+            {
+                "summary": summary,
+                "results": results,
+                "lessons_learned": lessons_learned,
+                "next_steps": next_steps,
+            },
+        )
+        self._commit()
+        self.db.refresh(report)
+        return report
+
+    def delete_project_report(self, project_id: UUID, user_id: UUID) -> None:
+        """Delete the project's outcome report.
+
+        Lead-only and project-scoped exactly like edit. A project without a
+        report -> 404 (204 otherwise, no body).
+        """
+        self._require_project_lead(project_id, user_id)
+        report = self._require_report_exists(project_id)
+        self.project_report_repository.delete(report)
+        self._commit()
+
+    def _require_project(self, project_id: UUID) -> Project:
+        project = self.project_repository.get_by_id(project_id)
+        if project is None:
+            raise NotFoundError("Project", project_id)
+        return project
+
+    def _require_report_exists(self, project_id: UUID) -> ProjectReport:
+        report = self.project_report_repository.get_by_project(project_id)
+        if report is None:
+            raise NotFoundError("ProjectReport", project_id)
+        return report
 
     def _commit(self) -> None:
         try:

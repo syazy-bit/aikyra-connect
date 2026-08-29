@@ -6,3 +6,4 @@ import app.models.project  # noqa: F401
 import app.models.organization  # noqa: F401
 import app.models.support_offer  # noqa: F401
 import app.models.project_impact_metric  # noqa: F401
+import app.models.project_report  # noqa: F401

@@ -20,6 +20,7 @@ from app.schemas.project import (
     ProjectListQuery,
     ProjectListResponse,
 )
+from app.schemas.report import ProjectReportCreate, ProjectReportResponse, ProjectReportUpdate
 from app.schemas.support_offer import (
     SupportOfferCreate,
     SupportOfferResponse,
@@ -207,5 +208,99 @@ def delete_impact_metric(
     service.delete_impact_metric(
         project_id=project_id,
         metric_id=metric_id,
+        user_id=current_user.id,
+    )
+
+
+# --- Outcome report (CP8) -------------------------------------------------
+
+@router.get(
+    "/{project_id}/report", response_model=ProjectReportResponse
+)
+def get_project_report(
+    project_id: UUID,
+    service: ProjectService = Depends(get_project_service),
+) -> ProjectReportResponse:
+    """Public read of a project's outcome report.
+
+    No authentication is required to view: like impact metrics and support
+    offers, the final outcome story is public. The report is project-scoped —
+    reached only through the project's URL, never via a standalone report ID.
+    Unknown project -> 404; project without a report -> 404.
+    """
+    report = service.get_project_report(project_id=project_id)
+    return ProjectReportResponse.model_validate(report)
+
+
+@router.post(
+    "/{project_id}/report",
+    response_model=ProjectReportResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_project_report(
+    project_id: UUID,
+    payload: ProjectReportCreate,
+    current_user: User = Depends(get_current_user),
+    service: ProjectService = Depends(get_project_service),
+) -> ProjectReportResponse:
+    """Write the outcome report for an implemented project.
+
+    Lead-only, and only when the project status is 'implemented' (409
+    otherwise). The report is a 1:1 project singleton, so a second report on
+    the same project returns 409. All identity/ownership fields are rejected
+    in the schema — project_id is taken from the URL path (422 otherwise).
+    """
+    report = service.create_project_report(
+        project_id=project_id,
+        user_id=current_user.id,
+        summary=payload.summary,
+        results=payload.results,
+        lessons_learned=payload.lessons_learned,
+        next_steps=payload.next_steps,
+    )
+    return ProjectReportResponse.model_validate(report)
+
+
+@router.patch(
+    "/{project_id}/report", response_model=ProjectReportResponse
+)
+def update_project_report(
+    project_id: UUID,
+    payload: ProjectReportUpdate,
+    current_user: User = Depends(get_current_user),
+    service: ProjectService = Depends(get_project_service),
+) -> ProjectReportResponse:
+    """Edit the project's outcome report.
+
+    Lead-only, exactly like create. Project-scoped: the URL's project decides
+    which report is edited, so another project's report is not reachable. A
+    project without a report returns 404.
+    """
+    report = service.update_project_report(
+        project_id=project_id,
+        user_id=current_user.id,
+        summary=payload.summary,
+        results=payload.results,
+        lessons_learned=payload.lessons_learned,
+        next_steps=payload.next_steps,
+    )
+    return ProjectReportResponse.model_validate(report)
+
+
+@router.delete(
+    "/{project_id}/report", status_code=status.HTTP_204_NO_CONTENT
+)
+def delete_project_report(
+    project_id: UUID,
+    current_user: User = Depends(get_current_user),
+    service: ProjectService = Depends(get_project_service),
+) -> None:
+    """Delete the project's outcome report.
+
+    Lead-only and project-scoped exactly like edit: a project without a report
+    returns 404. Returns 204 with no body on success.
+    """
+    service.delete_project_report(
+        project_id=project_id,
         user_id=current_user.id,
     )

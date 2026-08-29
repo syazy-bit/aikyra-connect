@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.project import ProjectStatus
 from app.schemas.impact_metric import ImpactMetricResponse
+from app.schemas.report import ProjectReportResponse
 
 
 class OrganizationRef(BaseModel):
@@ -34,12 +35,13 @@ class ProjectListItem(BaseModel):
     team_name: str
     challenge_title: str
     offer_count: int
+    has_report: bool
     created_at: datetime
 
 
 class ProjectDetailResponse(BaseModel):
-    """Full public projection including the project's support offers and
-    impact metrics."""
+    """Full public projection including the project's support offers, impact
+    metrics and — once written — its outcome report."""
 
     id: UUID
     title: str
@@ -50,6 +52,7 @@ class ProjectDetailResponse(BaseModel):
     challenge_title: str
     offers: list[ProjectOfferRef]
     impact: list[ImpactMetricResponse]
+    report: ProjectReportResponse | None
     created_at: datetime
 
 
