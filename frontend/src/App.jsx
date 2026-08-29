@@ -18,6 +18,7 @@ import { TeamDetail } from "./pages/TeamDetail.jsx";
 import { ProposalDetail } from "./pages/ProposalDetail.jsx";
 import { Projects } from "./pages/Projects.jsx";
 import { ProjectDetail } from "./pages/ProjectDetail.jsx";
+import { Dashboard } from "./pages/Dashboard.jsx";
 
 function AppContent() {
   const { route } = useRouter();
@@ -68,6 +69,8 @@ function AppContent() {
         return <Projects />;
       case "project-detail":
         return <ProjectDetail />;
+      case "dashboard":
+        return <Dashboard />;
       default:
         return (
           <main className="container-narrow" style={{ padding: "var(--space-16) var(--space-4)", textAlign: "center" }}>

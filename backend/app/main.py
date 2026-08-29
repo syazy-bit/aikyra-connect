@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse
 
 from app.api.auth import router as auth_router
 from app.api.challenges import router as challenges_router
+from app.api.dashboard import router as dashboard_router
 from app.api.institutions import router as institutions_router
 from app.api.matches import router as matches_router
 from app.api.organizations import router as organizations_router
@@ -75,3 +76,4 @@ app.include_router(teams_router)
 app.include_router(proposals_router)
 app.include_router(projects_router)
 app.include_router(organizations_router)
+app.include_router(dashboard_router)
