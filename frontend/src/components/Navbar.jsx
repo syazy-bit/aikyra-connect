@@ -58,6 +58,9 @@ export function Navbar() {
           <Link href="/institutions" className={`nav-link ${currentPath.startsWith("/institutions") ? "active" : ""}`} onClick={closeMobileMenu}>
             Institutions
           </Link>
+          <Link href="/projects" className={`nav-link ${currentPath.startsWith("/projects") ? "active" : ""}`} onClick={closeMobileMenu}>
+            Approved Solutions
+          </Link>
           {isAuthenticated && (
             <Link href="/workspace" className={`nav-link ${currentPath.startsWith("/workspace") ? "active" : ""}`} onClick={closeMobileMenu}>
               Workspace

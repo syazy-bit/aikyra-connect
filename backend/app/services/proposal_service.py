@@ -6,10 +6,12 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError
 from app.models.proposal import Proposal, ProposalStatus
+from app.models.project import ProjectStatus
 from app.models.team import Team, TeamRole
 from app.repositories.challenge_repository import ChallengeRepository
 from app.repositories.membership_repository import MembershipRepository
 from app.repositories.proposal_repository import ProposalRepository
+from app.repositories.project_repository import ProjectRepository
 from app.repositories.team_repository import TeamMembershipRepository, TeamRepository
 
 
@@ -32,6 +34,7 @@ class ProposalService:
         self.team_membership_repository = TeamMembershipRepository(db)
         self.institution_membership_repository = MembershipRepository(db)
         self.challenge_repository = ChallengeRepository(db)
+        self.project_repository = ProjectRepository(db)
 
     # --- Authorization helpers (DB-backed) ----------------------------------
 
@@ -283,11 +286,39 @@ class ProposalService:
                 "Only proposals under review can be accepted."
             )
 
-        proposal.status = ProposalStatus.ACCEPTED
-        proposal.reviewed_at = datetime.now(timezone.utc)
-        proposal.reviewed_by = reviewer_user_id
-        proposal.review_note = review_note
-        self._commit()
+        if self.project_repository.get_by_proposal(proposal.id) is not None:
+            raise ConflictError(
+                "A project already exists for this accepted proposal."
+            )
+
+        team = self.team_repository.get_by_id(proposal.team_id)
+        if team is None:
+            raise NotFoundError("Team", proposal.team_id)
+
+        try:
+            proposal.status = ProposalStatus.ACCEPTED
+            proposal.reviewed_at = datetime.now(timezone.utc)
+            proposal.reviewed_by = reviewer_user_id
+            proposal.review_note = review_note
+            # Materialize the approved solution so industry/NGO support can
+            # attach to it. Created exactly once (unique proposal_id).
+            self.project_repository.create(
+                {
+                    "proposal_id": proposal.id,
+                    "team_id": proposal.team_id,
+                    "institution_id": team.institution_id,
+                    "challenge_id": proposal.challenge_id,
+                    "title": proposal.title,
+                    "status": ProjectStatus.ACTIVE,
+                }
+            )
+            self._commit()
+        except ConflictError:
+            raise
+        except IntegrityError:
+            self.db.rollback()
+            raise ConflictError("A project for this proposal already exists.") from None
+
         self.db.refresh(proposal)
         return proposal
 

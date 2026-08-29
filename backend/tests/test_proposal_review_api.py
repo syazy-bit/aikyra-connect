@@ -301,6 +301,11 @@ def test_accept_proposal_success(auth_client, user_client, db_session):
     assert body["reviewed_at"] is not None
     assert body["reviewed_by"] == str(_user_id(db_session, "reviewer-owner@aikyra.dev"))
 
+    # Accept materializes the approved-solution project (Phase 6 hook).
+    projects = owner.get("/api/projects")
+    assert projects.status_code == 200
+    assert projects.json()["total"] == 1
+
 
 def test_accept_proposal_with_note(auth_client, user_client, db_session):
     """A review note supplied at accept is persisted."""

@@ -3098,6 +3098,92 @@ textarea.form-control {
   border-top: 1px solid var(--border-subtle);
 }
 
+/* ==========================================================================
+   Industry / NGO support — approved solutions & support offers
+   ========================================================================== */
+
+/* Approved-projects grid (public board) */
+.projects-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-6);
+  margin-top: var(--space-4);
+}
+
+@media (min-width: 640px) {
+  .projects-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (min-width: 1024px) {
+  .projects-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+.card-meta-secondary {
+  margin-top: auto;
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-subtle);
+  padding-top: var(--space-3);
+}
+
+.support-count {
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* Support-type badges */
+.support-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 0.25rem 0.625rem;
+  border-radius: var(--radius-full);
+  border: 1px solid transparent;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.support-funding { background: var(--color-success-50); color: var(--color-success-700); border-color: var(--color-success-100); }
+.support-equipment { background: var(--color-info-50); color: var(--color-info-700); border-color: var(--color-info-100); }
+.support-mentorship { background: var(--color-amber-50); color: var(--color-amber-800); border-color: var(--color-amber-100); }
+.support-pilot { background: var(--color-teal-50); color: var(--color-teal-700); border-color: var(--color-teal-100); }
+
+/* Offer modal */
+.modal-copy {
+  color: var(--text-secondary);
+  margin-bottom: var(--space-4);
+}
+
+.offersub-heading {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin: var(--space-4) 0 var(--space-3);
+}
+
+.form-label-optional {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* Offer message shown on the project detail page */
+.offer-message {
+  display: block;
+  margin-top: var(--space-2);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
 @media (max-width: 640px) {
   .modal-overlay { padding: var(--space-4) var(--space-2); }
   .modal-body { padding: var(--space-5); }

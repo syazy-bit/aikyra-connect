@@ -19,6 +19,9 @@ import app.models.institution  # noqa: F401,E402
 import app.models.user  # noqa: F401,E402
 import app.models.institution_membership  # noqa: F401,E402
 import app.models.proposal  # noqa: F401,E402
+import app.models.project  # noqa: F401,E402
+import app.models.organization  # noqa: F401,E402
+import app.models.support_offer  # noqa: F401,E402
 from app.main import app  # noqa: E402
 
 
@@ -75,11 +78,15 @@ def _clean_tables(_create_schema):
     yield
     with test_engine.begin() as conn:
         # Truncate in FK-dependency order: proposals depend on teams and
-        # challenges, so truncate them first.
+        # challenges, so truncate them first. support_offers and projects
+        # depend on proposals/teams, so truncate before those parents too.
+        conn.execute(text('TRUNCATE TABLE "support_offers" CASCADE'))
+        conn.execute(text('TRUNCATE TABLE "projects" CASCADE'))
         conn.execute(text('TRUNCATE TABLE "proposals" CASCADE'))
         conn.execute(text('TRUNCATE TABLE "team_memberships" CASCADE'))
         conn.execute(text('TRUNCATE TABLE "teams" CASCADE'))
         conn.execute(text('TRUNCATE TABLE "institution_memberships" CASCADE'))
+        conn.execute(text('TRUNCATE TABLE "organizations" CASCADE'))
         conn.execute(text('TRUNCATE TABLE "users" CASCADE'))
         conn.execute(text('TRUNCATE TABLE "challenges" CASCADE'))
         conn.execute(text('TRUNCATE TABLE "institutions" CASCADE'))

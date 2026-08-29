@@ -14,6 +14,7 @@ import {
   reviewProposal,
 } from "../services/proposalService.js";
 import { listChallenges, getChallengeMatches } from "../services/challengeService.js";
+import { listProjects } from "../services/projectService.js";
 import {
   listInstitutions,
   getInstitutionMembership,
@@ -371,6 +372,7 @@ export function Workspace() {
     () => listChallenges({ sort: "urgency", hasDna: true, limit: RAIL_CHALLENGE_LIMIT }),
     []
   );
+  const projectsApi = useApiResource(() => listProjects({ limit: 100 }), []);
 
   const teamItems = useMemo(() => teams.data?.items ?? [], [teams.data]);
   const invitationItems = useMemo(() => invitations.data?.items ?? [], [invitations.data]);
@@ -381,6 +383,14 @@ export function Workspace() {
     () => new Map((institutions.data?.items ?? []).map((i) => [i.id, i])),
     [institutions.data]
   );
+
+  // Approved solutions from proposals accepted by this user's institution.
+  const approvedForMe = useMemo(() => {
+    const myTeamIds = new Set(teamItems.map((t) => t.id));
+    return (projectsApi.data?.items ?? []).filter((project) =>
+      myTeamIds.has(project.team_id)
+    );
+  }, [projectsApi.data, teamItems]);
 
   const teamById = useMemo(
     () => new Map(teamItems.map((t) => [t.id, t])),
@@ -404,7 +414,22 @@ export function Workspace() {
     return grouped;
   }, [proposalItems]);
 
+  // --- Identity: which institutions is this user active in? ---------------
+  // Primary source: institution_ids of teams visible to this user (their
+  // teams belong to institutions where they hold an active membership).
+  // Fallback for users with no teams yet: bounded, parallel membership probes
+  // against the institutions feed (no "my memberships" endpoint exists).
+  const teamInstitutionIds = useMemo(
+    () => Array.from(new Set(teamItems.map((t) => t.institution_id).filter(Boolean))),
+    [teamItems]
+  );
+
+  const [resolvedInstitutions, setResolvedInstitutions] = useState([]);
+  const [resolvingInstitutions, setResolvingInstitutions] = useState(true);
+
   // --- Review rights: active owner/representative of an institution ---------
+  // Computed after resolvedInstitutions is declared (useState above) so the
+  // memo never reads the binding before its initializer runs.
   const reviewerInstitutionIds = useMemo(
     () =>
       new Set(
@@ -432,19 +457,6 @@ export function Workspace() {
       }),
     [proposalItems, teamById, reviewerInstitutionIds]
   );
-
-  // --- Identity: which institutions is this user active in? ---------------
-  // Primary source: institution_ids of teams visible to this user (their
-  // teams belong to institutions where they hold an active membership).
-  // Fallback for users with no teams yet: bounded, parallel membership probes
-  // against the institutions feed (no "my memberships" endpoint exists).
-  const teamInstitutionIds = useMemo(
-    () => Array.from(new Set(teamItems.map((t) => t.institution_id).filter(Boolean))),
-    [teamItems]
-  );
-
-  const [resolvedInstitutions, setResolvedInstitutions] = useState([]);
-  const [resolvingInstitutions, setResolvingInstitutions] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -907,6 +919,62 @@ export function Workspace() {
                           </div>
                         );
                       })}
+                    </div>
+                  )}
+                </section>
+
+                {/* Approved solutions & support offers */}
+                <section
+                  className="workspace-panel"
+                  aria-labelledby="approved-solutions-heading"
+                >
+                  <PanelHeading
+                    kicker="Industry & NGO support"
+                    title="Approved solutions"
+                    count={approvedForMe.length}
+                  />
+                  {projectsApi.loading ? (
+                    <PanelSkeleton rows={2} />
+                  ) : projectsApi.error ? (
+                    <PanelError
+                      title="Could not load approved solutions"
+                      onRetry={projectsApi.retry}
+                    />
+                  ) : approvedForMe.length === 0 ? (
+                    <div className="panel-note">
+                      Accepted proposals become approved solutions that are open
+                      to support from industry organizations and NGOs.
+                    </div>
+                  ) : (
+                    <div className="workspace-list">
+                      {approvedForMe.map((project) => (
+                        <div key={project.id} className="invite-row">
+                          <span className="invite-row-main">
+                            <Link
+                              href={`/projects/${project.id}`}
+                              className="invite-row-name"
+                              style={{ textDecoration: "none" }}
+                            >
+                              {project.title}
+                            </Link>
+                            <span className="invite-row-meta">
+                              {project.institution_name}
+                              {" · "}
+                              {project.offer_count === 0
+                                ? "Open for support"
+                                : `${project.offer_count} support offer${
+                                    project.offer_count === 1 ? "" : "s"
+                                  }`}
+                            </span>
+                          </span>
+                          <Link
+                            href={`/projects/${project.id}`}
+                            className="btn btn-secondary btn-sm"
+                          >
+                            View
+                          </Link>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </section>

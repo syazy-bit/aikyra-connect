@@ -16,6 +16,8 @@ import { Register } from "./pages/Register.jsx";
 import { Workspace } from "./pages/Workspace.jsx";
 import { TeamDetail } from "./pages/TeamDetail.jsx";
 import { ProposalDetail } from "./pages/ProposalDetail.jsx";
+import { Projects } from "./pages/Projects.jsx";
+import { ProjectDetail } from "./pages/ProjectDetail.jsx";
 
 function AppContent() {
   const { route } = useRouter();
@@ -62,6 +64,10 @@ function AppContent() {
             <ProposalDetail />
           </ProtectedRoute>
         );
+      case "projects":
+        return <Projects />;
+      case "project-detail":
+        return <ProjectDetail />;
       default:
         return (
           <main className="container-narrow" style={{ padding: "var(--space-16) var(--space-4)", textAlign: "center" }}>

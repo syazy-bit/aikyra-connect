@@ -5,8 +5,10 @@ from app.api.auth import router as auth_router
 from app.api.challenges import router as challenges_router
 from app.api.institutions import router as institutions_router
 from app.api.matches import router as matches_router
+from app.api.organizations import router as organizations_router
 from app.api.problem_dna import router as problem_dna_router
 from app.api.proposals import router as proposals_router
+from app.api.projects import router as projects_router
 from app.api.related import router as related_router
 from app.api.taxonomy import router as taxonomy_router
 from app.api.teams import router as teams_router
@@ -71,3 +73,5 @@ app.include_router(institutions_router)
 app.include_router(matches_router)
 app.include_router(teams_router)
 app.include_router(proposals_router)
+app.include_router(projects_router)
+app.include_router(organizations_router)

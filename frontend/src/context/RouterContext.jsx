@@ -82,6 +82,17 @@ export function RouterProvider({ children }) {
       };
     }
 
+    if (path === "/projects") return { name: "projects", params: {}, query: params };
+
+    const projectDetailMatch = path.match(/^\/projects\/([^/]+)$/);
+    if (projectDetailMatch) {
+      return {
+        name: "project-detail",
+        params: { id: projectDetailMatch[1] },
+        query: params,
+      };
+    }
+
     return { name: "not-found", params: {}, query: {} };
   };
 
