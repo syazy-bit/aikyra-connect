@@ -3,11 +3,31 @@ import { Link } from "../context/RouterContext.jsx";
 import { listChallenges } from "../services/challengeService.js";
 import { ChallengeCard } from "../components/ChallengeCard.jsx";
 import { LoadingSpinner } from "../components/LoadingSpinner.jsx";
+import { Alert } from "../components/Alert.jsx";
+
+const WELCOME_WINDOW_MS = 10 * 60 * 1000;
 
 export function Home() {
   const [recentChallenges, setRecentChallenges] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showWelcome, setShowWelcome] = useState(false);
+
+  // One-time, subtle welcome cue shown when the user just registered.
+  useEffect(() => {
+    let ts = null;
+    try {
+      ts = sessionStorage.getItem("aikyra_welcome_ts");
+    } catch {
+      ts = null;
+    }
+    if (!ts) return;
+    sessionStorage.removeItem("aikyra_welcome_ts");
+    const age = Date.now() - Number(ts);
+    if (!Number.isNaN(age) && age >= 0 && age <= WELCOME_WINDOW_MS) {
+      setShowWelcome(true);
+    }
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -41,6 +61,27 @@ export function Home() {
 
   return (
     <div className="home-page">
+      {/* ====================================================================
+          Welcome cue (one-time, right after account creation)
+          ==================================================================== */}
+      {showWelcome && (
+        <div className="container" style={{ marginTop: "var(--space-8)", width: "100%" }}>
+          <Alert type="success" title="Account created — you're signed in.">
+            <p style={{ marginBottom: "var(--space-3)" }}>
+              Welcome to AIKYRA. Pick a starting point to get moving.
+            </p>
+            <div style={{ display: "flex", gap: "var(--space-3)", flexWrap: "wrap" }}>
+              <Link href="/challenges" className="btn btn-primary btn-sm">
+                Explore Challenges
+              </Link>
+              <Link href="/report" className="btn btn-secondary btn-sm">
+                Report a Problem
+              </Link>
+            </div>
+          </Alert>
+        </div>
+      )}
+
       {/* ====================================================================
           Hero Section
           ==================================================================== */}

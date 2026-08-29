@@ -5,6 +5,8 @@ const AuthContext = createContext(null);
 
 const TOKEN_KEY = "aikyra_token";
 
+export const SESSION_EXPIRED_MESSAGE = "Your session has expired. Please sign in again.";
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -22,6 +24,8 @@ export function AuthProvider({ children }) {
     setError(null);
   }, []);
 
+  const clearError = useCallback(() => setError(null), []);
+
   const login = useCallback(async (email, password) => {
     setError(null);
     try {
@@ -35,8 +39,9 @@ export function AuthProvider({ children }) {
       setAuth(token, me);
       return { success: true };
     } catch (err) {
-      setError(err.message || "Login failed. Please check your credentials.");
-      return { success: false, error: err.message };
+      const message = err.message || "Login failed. Please check your credentials.";
+      setError(message);
+      return { success: false, error: message, status: err.status ?? null };
     }
   }, [setAuth]);
 
@@ -57,8 +62,9 @@ export function AuthProvider({ children }) {
       setAuth(token, me);
       return { success: true };
     } catch (err) {
-      setError(err.message || "Registration failed. Please try again.");
-      return { success: false, error: err.message };
+      const message = err.message || "Registration failed. Please try again.";
+      setError(message);
+      return { success: false, error: message, status: err.status ?? null };
     }
   }, [setAuth]);
 
@@ -87,7 +93,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     setUnauthenticatedHandler(() => {
       setUser(null);
-      setError("Your session has expired. Please sign in again.");
+      setError(SESSION_EXPIRED_MESSAGE);
     });
     restoreSession();
   }, [restoreSession]);
@@ -96,6 +102,7 @@ export function AuthProvider({ children }) {
     user,
     loading,
     error,
+    clearError,
     login,
     register,
     logout,

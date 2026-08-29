@@ -5,13 +5,20 @@ import { useRouter } from "../context/RouterContext.jsx";
 
 export function ProtectedRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
-  const { navigate } = useRouter();
+  const { navigate, currentPath } = useRouter();
 
   useEffect(() => {
-    if (!loading && !isAuthenticated) {
-      navigate("/login");
+    // Preserve the requested internal path so the user can return to it
+    // after signing in (/login?next=/workspace).
+    if (
+      !loading &&
+      !isAuthenticated &&
+      currentPath !== "/login" &&
+      currentPath !== "/register"
+    ) {
+      navigate(`/login?next=${encodeURIComponent(currentPath)}`);
     }
-  }, [loading, isAuthenticated, navigate]);
+  }, [loading, isAuthenticated, navigate, currentPath]);
 
   if (loading) {
     return (
