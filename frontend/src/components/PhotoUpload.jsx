@@ -8,9 +8,9 @@ const ACCEPT = ACCEPTED_TYPES.join(",");
  * Optional photo evidence picker for the public problem report form.
  *
  * The photo is uploaded separately, AFTER the challenge is created, via the
- * authenticated POST /api/challenges/{id}/image endpoint. The server decides
- * the real format and stored filename — these client-side checks are just a
- * courtesy to fail fast on obvious mistakes.
+ * public POST /api/challenges/{id}/image endpoint (no sign-in needed). The
+ * server decides the real format and stored filename — these client-side
+ * checks are just a courtesy to fail fast on obvious mistakes.
  *
  * The object-URL preview is revoked whenever the file changes or the picker
  * unmounts, so the browser never leaks blob URLs.

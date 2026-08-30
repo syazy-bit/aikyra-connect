@@ -1,7 +1,7 @@
 """Public photo evidence for reported problems (challenges).
 
 Covers:
-- upload (POST /api/challenges/{id}/image) — authenticated write, public image
+- upload (POST /api/challenges/{id}/image) — public write, public image
 - retrieval (GET /api/challenges/{id}/image) — public, matching the challenge
 - server-generated filenames, magic-byte validation, size limit, path safety
 - orphan prevention on successful replacement; preservation on failed replace
@@ -168,13 +168,145 @@ def test_get_image_without_image_404(client):
     assert resp.status_code == 404
 
 
-# 13. Anonymous upload -> 401 --------------------------------------------------
+# 13. Anonymous report + photo (public write, matching the public model) ---------
+#
+# Challenges are public and owner-less: anyone may create one, anyone may read
+# one, so a challenge's evidence photo is public and the write is public too.
+# This mirrors the exact flow the frontend ReportProblem runs without a login.
 
 
-def test_anonymous_upload_401(client):
+@pytest.mark.parametrize(
+    "filename,data,ctype,ext",
+    [
+        ("photo.jpg", JPG_BYTES, "image/jpeg", "jpg"),
+        ("photo.png", PNG_BYTES, "image/png", "png"),
+        ("photo.webp", WEBP_BYTES, "image/webp", "webp"),
+    ],
+)
+def test_anonymous_valid_image_upload_succeeds(
+    client, db_session, filename, data, ctype, ext
+):
     challenge = _create_challenge(client)
+    resp = _upload(client, challenge["id"], filename, data, ctype)
+    assert resp.status_code == 200, resp.json()
+    assert resp.json()["id"] == challenge["id"]
+    assert resp.json()["has_image"] is True
+    row = _row(db_session, challenge["id"])
+    assert row.image_path is not None
+    # Associated with exactly the created challenge; store a server-generated name.
+    assert STORED_PATH_RE.match(row.image_path)
+    assert row.image_path.endswith(f".{ext}")
+    # The client filename never controls the stored filename.
+    assert filename not in row.image_path
+
+
+def test_anonymous_create_then_upload_does_not_duplicate(client, db_session):
+    """The frontend's create-then-upload flow must never create extra challenges."""
+    before = db_session.query(Challenge).count()
+    challenge = _create_challenge(client)
+    assert db_session.query(Challenge).count() == before + 1
+
     resp = _upload(client, challenge["id"], "photo.jpg", JPG_BYTES, "image/jpeg")
-    assert resp.status_code == 401
+    assert resp.status_code == 200
+    assert resp.json()["id"] == challenge["id"]
+
+    # Still exactly one challenge — the upload only mutated that challenge.
+    assert db_session.query(Challenge).count() == before + 1
+    assert STORED_PATH_RE.match(_row(db_session, challenge["id"]).image_path)
+
+
+def test_anonymous_failed_upload_preserves_created_challenge(client, db_session):
+    """A failed photo upload keeps the already-created report intact."""
+    challenge = _create_challenge(client)
+    resp = _upload(client, challenge["id"], "broken.jpg", TEXT_BYTES, "image/jpeg")
+    assert resp.status_code == 400
+
+    # The created challenge is preserved, still reachable, and image-less.
+    assert client.get(f"/api/challenges/{challenge['id']}").status_code == 200
+    assert _row(db_session, challenge["id"]).image_path is None
+
+    # A later valid upload to the same challenge still works.
+    ok = _upload(client, challenge["id"], "ok.jpg", JPG_BYTES, "image/jpeg")
+    assert ok.status_code == 200
+    assert ok.json()["id"] == challenge["id"]
+
+
+def test_anonymous_location_and_photo_flow(client, db_session):
+    challenge = _create_challenge(client, location="Sambalpur, Odisha")
+    assert challenge["location"] == "Sambalpur, Odisha"
+
+    resp = _upload(client, challenge["id"], "photo.png", PNG_BYTES, "image/png")
+    assert resp.status_code == 200
+
+    detail = client.get(f"/api/challenges/{challenge['id']}")
+    assert detail.status_code == 200
+    assert detail.json()["location"] == "Sambalpur, Odisha"
+    assert detail.json()["has_image"] is True
+    assert client.get(f"/api/challenges/{challenge['id']}/image").status_code == 200
+
+
+def test_anonymous_upload_unknown_challenge_404(client):
+    from uuid import uuid4
+
+    resp = _upload(client, uuid4(), "photo.jpg", JPG_BYTES, "image/jpeg")
+    assert resp.status_code == 404
+
+
+def test_anonymous_oversized_image_rejected(client, db_session):
+    challenge = _create_challenge(client)
+    big = b"\xff\xd8\xff\xe0" + b"\x00" * (5 * 1024 * 1024 + 1024) + b"\xff\xd9"
+    resp = _upload(client, challenge["id"], "big.jpg", big, "image/jpeg")
+    assert resp.status_code == 400
+    assert _row(db_session, challenge["id"]).image_path is None
+
+
+def test_anonymous_spoofed_image_rejected(client, db_session):
+    challenge = _create_challenge(client)
+    resp = _upload(client, challenge["id"], "evil.jpg", TEXT_BYTES, "image/jpeg")
+    assert resp.status_code == 400
+    assert _row(db_session, challenge["id"]).image_path is None
+
+
+def test_anonymous_truncated_image_rejected(client, db_session):
+    challenge = _create_challenge(client)
+    truncated_jpg = b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01"
+    resp = _upload(client, challenge["id"], "broken.jpg", truncated_jpg, "image/jpeg")
+    assert resp.status_code == 400
+    assert _row(db_session, challenge["id"]).image_path is None
+
+
+def test_anonymous_unsupported_format_rejected(client, db_session):
+    challenge = _create_challenge(client)
+    resp = _upload(client, challenge["id"], "notes.txt", TEXT_BYTES, "text/plain")
+    assert resp.status_code == 400
+    assert _row(db_session, challenge["id"]).image_path is None
+
+
+def test_anonymous_hostile_filename_never_controls_stored_path(client, db_session):
+    challenge = _create_challenge(client)
+    resp = _upload(client, challenge["id"], "../../../evil.jpg", JPG_BYTES, "image/jpeg")
+    assert resp.status_code == 200, resp.json()
+    row = _row(db_session, challenge["id"])
+    # Stored path stays safely inside uploads/reports; nothing path-like escapes.
+    assert STORED_PATH_RE.match(row.image_path)
+    assert ".." not in row.image_path
+    assert "evil" not in row.image_path
+
+
+def test_anonymous_client_cannot_provide_image_path(client, db_session):
+    challenge = _create_challenge(client)
+    # Only the declared multipart ``file`` field is honored; an extra
+    # ``image_path`` field is ignored, so the client can never steer storage.
+    resp = client.post(
+        f"/api/challenges/{challenge['id']}/image",
+        data={"image_path": "../../escape.png"},
+        files={"file": ("x.jpg", JPG_BYTES, "image/jpeg")},
+    )
+    assert resp.status_code == 200, resp.json()
+    row = _row(db_session, challenge["id"])
+    assert STORED_PATH_RE.match(row.image_path)
+    assert row.image_path != "../../escape.png"
+    assert "escape" not in row.image_path
 
 
 # 14. Public image retrieval (no auth) matches public challenge visibility ----

@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { Link, useRouter } from "../context/RouterContext.jsx";
-import { useAuth } from "../context/AuthContext.jsx";
 import { createChallenge, uploadChallengeImage } from "../services/challengeService.js";
 import { Alert } from "../components/Alert.jsx";
 import { LoadingSpinner } from "../components/LoadingSpinner.jsx";
@@ -12,7 +11,6 @@ const LOCATION_MAX_LENGTH = 200;
 
 export function ReportProblem() {
   const { navigate } = useRouter();
-  const { isAuthenticated } = useAuth();
 
   // Form State
   const [formData, setFormData] = useState({
@@ -22,7 +20,7 @@ export function ReportProblem() {
   });
 
   // Optional public photo evidence. Uploaded separately AFTER the challenge
-  // is created, because submissions are public but uploads are authenticated.
+  // is created, so the report succeeds even if the photo upload fails.
   const [photoFile, setPhotoFile] = useState(null);
   const [photoUploadError, setPhotoUploadError] = useState(null);
 
@@ -492,7 +490,7 @@ export function ReportProblem() {
             </div>
           </div>
 
-          {/* 4. Optional Photo Evidence (public, uploaded separately & authenticated) */}
+          {/* 4. Optional Public Photo Evidence (uploaded separately, no sign-in needed) */}
           <div className="form-group">
             <div className="form-label-wrapper">
               <label htmlFor="photo-evidence" className="form-label">
@@ -513,12 +511,6 @@ export function ReportProblem() {
               disabled={submitting}
               error={photoUploadError}
             />
-            {!isAuthenticated && (
-              <p className="form-helper form-helper-auth-note" id="photo-auth-helper">
-                Attaching a photo requires you to be signed in. Your written report is
-                published publicly either way.
-              </p>
-            )}
           </div>
 
           {/* Form Action */}

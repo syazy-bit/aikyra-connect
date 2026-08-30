@@ -5,8 +5,6 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, Up
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.dependencies.auth import get_current_user
-from app.models.user import User
 from app.schemas.challenge import ChallengeCreate, ChallengeResponse, ChallengeUpdate
 from app.schemas.discovery import (
     ChallengeDetailResponse,
@@ -67,15 +65,18 @@ async def upload_challenge_image(
     challenge_id: UUID,
     file: UploadFile = File(...),
     service: ChallengeService = Depends(get_challenge_service),
-    current_user: User = Depends(get_current_user),
 ) -> ChallengeResponse:
-    """Attach an optional public photo to an existing challenge (authenticated).
+    """Attach an optional public photo to an existing challenge (public write).
 
-    Multipart form field ``file``. Only JPG/PNG/WebP up to 5 MB are accepted.
-    The stored filename is generated server-side — the client filename, MIME
-    type, extension, and any metadata are never trusted and never used as a
-    storage path. Reading a challenge's image is public because challenges are
-    public; only the write is authenticated.
+    Public because submissions themselves are public: anyone may create a
+    challenge and anyone may read it, so the evidence photo is public too.
+    The ``challenge_id`` comes exclusively from the URL path and the endpoint
+    only attaches an image to an already-existing challenge — it never creates
+    one. Multipart form field ``file``. Only JPG/PNG/WebP up to 5 MB are
+    accepted. The stored filename is generated server-side — the client
+    filename, MIME type, extension, and any metadata are never trusted and
+    never used as a storage path. Reading a challenge's image is public because
+    challenges are public; attaching a photo is public for the same reason.
     """
     # Cap how much we read into memory to enforce the server-side limit.
     data = await file.read(MAX_IMAGE_BYTES + 1)

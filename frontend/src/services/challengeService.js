@@ -93,8 +93,9 @@ export async function createChallenge(payload) {
 }
 
 /**
- * Upload the optional public photo evidence for a challenge (authenticated).
- * Only the image bytes are sent; the stored filename is generated server-side.
+ * Upload the optional public photo evidence for a challenge (public — no
+ * sign-in needed, matching the public challenge it attaches to). Only the
+ * image bytes are sent; the stored filename is generated server-side.
  * @param {string} id
  * @param {File} file
  */
