@@ -15,6 +15,7 @@ import { LoadingSpinner } from "../components/LoadingSpinner.jsx";
 import { Alert } from "../components/Alert.jsx";
 import { EmptyState } from "../components/EmptyState.jsx";
 import { Modal } from "../components/Modal.jsx";
+import { minorToRupees, rupeesToMinor } from "../utils/money.js";
 
 /**
  * Owner funding management for one approved solution (team lead only).
@@ -25,23 +26,8 @@ import { Modal } from "../components/Modal.jsx";
  * returns 403/409 the error is surfaced verbatim rather than bypassed.
  *
  * Money: inputs are whole rupees; they are converted to integer minor units
- * (paise) for the API. Floats never enter the money path.
+ * (paise) for the API (see utils/money.js). Floats never enter the money path.
  */
-
-function rupeesToMinor(value) {
-  if (value === null || value === undefined || String(value).trim() === "") {
-    return null;
-  }
-  const amount = Number(value);
-  if (!Number.isFinite(amount) || amount <= 0) {
-    return null;
-  }
-  const minor = Math.round(amount * 100);
-  if (minor <= 0 || !Number.isSafeInteger(minor)) {
-    return null;
-  }
-  return minor;
-}
 
 function validateAmount(value) {
   if (String(value ?? "").trim() === "") {
@@ -50,10 +36,6 @@ function validateAmount(value) {
   return rupeesToMinor(value) === null
     ? "Enter a positive amount of at least ₹0.01, e.g. 50000 for ₹50,000 or 50000.50 for ₹50,000.50."
     : null;
-}
-
-function minorToRupees(minor) {
-  return String(Number(minor) / 100);
 }
 
 function GoalAmountField({ id, label, helper, value, onChange, max, error }) {

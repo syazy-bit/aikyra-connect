@@ -9,6 +9,7 @@ from app.core.exceptions import NotFoundError
 from app.dependencies.auth import get_current_user
 from app.models.user import User
 from app.schemas.funding import (
+    DemoContributionCreate,
     FundingGoalCreate,
     FundingGoalUpdate,
     FundingResponse,
@@ -311,6 +312,42 @@ def close_funding_goal(
         service.close_funding_goal(
             project_id=project_id,
             user_id=current_user.id,
+        )
+    )
+
+
+@router.post(
+    "/{project_id}/funding/contributions/demo",
+    response_model=FundingSummary,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_demo_contribution(
+    project_id: UUID,
+    payload: DemoContributionCreate,
+    current_user: User = Depends(get_current_user),
+    service: ProjectService = Depends(get_project_service),
+) -> FundingSummary:
+    """Record a DEMO-ONLY completed contribution on an OPEN goal.
+
+    DEMO / HACKATHON PRESENTATION ONLY — this simulates a successful support
+    contribution. It is NOT a real payment endpoint and no real money is
+    processed. It exists so the end-to-end community support flow can be
+    demonstrated honestly without a payment gateway.
+
+    Requires authentication (anonymous -> 401). The project and its verified
+    funding goal are resolved from the URL; the supporter is the authenticated
+    user; the row is stored COMPLETED so it feeds the normal DB-authoritative
+    aggregate. Only amount_minor (integer minor units) is accepted — supporter
+    identity, goal_id, project_id, status, raised_minor, supporter_count,
+    progress_bp, remaining_minor, currency and is_owner are all rejected (422)
+    and determined server-side. A project with no goal, or a CLOSED goal, is
+    rejected. The response is the existing server-derived public summary.
+    """
+    return FundingSummary.model_validate(
+        service.create_demo_contribution(
+            project_id=project_id,
+            user_id=current_user.id,
+            amount_minor=payload.amount_minor,
         )
     )
 

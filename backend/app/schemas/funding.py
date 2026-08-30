@@ -42,6 +42,28 @@ class FundingGoalUpdate(BaseModel):
     goal_minor: int = Field(gt=0, le=9223372036854775807, description="Goal amount in paise (integer minor units)")
 
 
+class DemoContributionCreate(BaseModel):
+    """Payload for a DEMO-ONLY support contribution (hackathon presentation).
+
+    This is NOT a real payment. The endpoint simulates a successful community
+    contribution so the end-to-end demo support flow can be shown without
+    processing any real money.
+
+    Only the integer minor-unit amount is accepted. The supporter identity
+    (contributed_by), the goal identity (goal_id), the project, the status and
+    every public total (raised_minor, supporter_count, progress_bp,
+    remaining_minor, is_owner) are all determined server-side from the
+    authenticated user and the database — any extra/forged field is rejected
+    (422).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    amount_minor: int = Field(
+        gt=0, le=9223372036854775807, description="Contribution amount in paise (integer minor units)"
+    )
+
+
 class FundingSummary(BaseModel):
     """Server-derived funding summary for one approved solution.
 

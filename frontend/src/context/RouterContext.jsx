@@ -85,6 +85,19 @@ export function RouterProvider({ children }) {
     if (path === "/projects") return { name: "projects", params: {}, query: params };
     if (path === "/impact") return { name: "dashboard", params: {}, query: {} };
 
+    // Must be checked before the shorter /funding and /funding/manage routes
+    // so the deeper demo-payment path is never shadowed.
+    const projectFundingDemoPaymentMatch = path.match(
+      /^\/projects\/([^/]+)\/funding\/demo-payment$/
+    );
+    if (projectFundingDemoPaymentMatch) {
+      return {
+        name: "project-funding-demo-payment",
+        params: { id: projectFundingDemoPaymentMatch[1] },
+        query: params,
+      };
+    }
+
     const projectFundingManageMatch = path.match(/^\/projects\/([^/]+)\/funding\/manage$/);
     if (projectFundingManageMatch) {
       return {

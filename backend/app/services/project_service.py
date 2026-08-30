@@ -4,6 +4,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError
+from app.models.funding_contribution import FundingContributionStatus
+from app.models.funding_goal import FundingGoalStatus
 from app.models.organization import Organization
 from app.models.project import Project, ProjectStatus
 from app.models.project_impact_metric import ProjectImpactMetric
@@ -266,6 +268,51 @@ class ProjectService:
         goal = self.funding_service.close_goal(project_id)
         self._commit()
         self.db.refresh(goal)
+        return self.get_public_funding(project_id)
+
+    def create_demo_contribution(
+        self, project_id: UUID, user_id: UUID, amount_minor: int
+    ) -> dict:
+        """Record a DEMO-ONLY completed contribution on an OPEN goal.
+
+        This is a presentational simulation, never a real payment: no money is
+        processed, and only an authenticated user may record one. The goal is
+        resolved from the URL's project (never from the client), the supporter
+        is the authenticated user (never client-supplied), and the row is
+        stored as COMPLETED so it feeds the normal DB-authoritative aggregate
+        exactly like a real contribution would.
+
+        The returned summary is the existing server-derived public summary
+        from `get_public_funding` — raised_minor, supporter_count, progress_bp
+        and status all come from the aggregate, never from the client.
+
+        Rules:
+        - project must exist (404);
+        - the project must have a verified funding goal (ConflictError when
+          none exists — never fabricated);
+        - the goal must be OPEN (CLOSED goals are rejected with 409);
+        - amount_minor is validated by the schema (>0, within BIGINT range).
+        """
+        project = self.project_repository.get_by_id(project_id)
+        if project is None:
+            raise NotFoundError("Project", project_id)
+        goal = self.funding_service.get_goal(project_id)
+        if goal is None:
+            raise ConflictError(
+                "This project has no verified funding goal to support."
+            )
+        if goal.status != FundingGoalStatus.OPEN:
+            raise ConflictError("This funding goal is not open to support.")
+
+        self.funding_service.funding_repository.create_contribution(
+            {
+                "goal_id": goal.id,
+                "contributed_by": user_id,
+                "amount_minor": amount_minor,
+                "status": FundingContributionStatus.COMPLETED,
+            }
+        )
+        self._commit()
         return self.get_public_funding(project_id)
 
     # --- Impact metrics (CP7) ----------------------------------------------

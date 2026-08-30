@@ -89,6 +89,26 @@ export async function closeFundingGoal(projectId) {
 }
 
 /**
+ * DEMO ONLY: record a simulated successful support contribution.
+ *
+ * This is a hackathon/presentation simulation — NOT a real payment and no
+ * money is processed. The server stores a COMPLETED contribution on the
+ * project's OPEN verified funding goal using the authenticated user as the
+ * supporter and returns the server-derived public summary. Only integer
+ * minor units (paise) are accepted; the client can never set the supporter,
+ * goal, status or public totals.
+ * @param {string} projectId
+ * @param {{amount_minor: number}} payload
+ */
+export async function createDemoContribution(projectId, payload) {
+  if (!projectId) throw new Error("Project ID is required");
+  return apiRequest(
+    `/api/projects/${encodeURIComponent(projectId)}/funding/contributions/demo`,
+    { method: "POST", body: JSON.stringify(payload) }
+  );
+}
+
+/**
  * Advance a project's lifecycle (prototype -> pilot -> implemented).
  * Only the project team's active lead may do this; the server enforces it.
  * @param {string} projectId

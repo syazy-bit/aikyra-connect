@@ -6,6 +6,7 @@ import { StatusBadge } from "../components/StatusBadge.jsx";
 import { LoadingSpinner } from "../components/LoadingSpinner.jsx";
 import { Alert } from "../components/Alert.jsx";
 import { EmptyState } from "../components/EmptyState.jsx";
+import { rupeesToMinor } from "../utils/money.js";
 
 function formatDate(dateString) {
   if (!dateString) return null;
@@ -19,14 +20,15 @@ function formatDate(dateString) {
 /**
  * Dedicated, public funding page for one approved solution.
  *
- * Reached from the approved-solutions cards and the project detail. It is
- * intentionally read-only: totals come from the funding endpoint (server
- * integer minor units), nothing here is ever sent back to the API, and the
- * honest, non-fake "secure online support is coming soon" note replaces any
- * payment flow until a real integration exists.
+ * Reached from the approved-solutions cards and the project detail. It
+ * displays the verified funding goal and its DB-derived progress (server
+ * integer minor units). When funding is OPEN, a supporter can enter a demo
+ * support amount and is taken to the demo-payment page. The support flow is
+ * explicitly a presentation/demo simulation — no real money is processed.
+ * CLOSED, FULLY_FUNDED and no-goal states retain their existing behavior.
  */
 export function ProjectFunding() {
-  const { route } = useRouter();
+  const { route, navigate } = useRouter();
   const projectId = route.params.id;
 
   const [project, setProject] = useState(null);
@@ -34,6 +36,10 @@ export function ProjectFunding() {
   const [hasCampaign, setHasCampaign] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [amount, setAmount] = useState("500");
+  const [amountError, setAmountError] = useState(null);
+
+  const QUICK_AMOUNTS = [100, 500, 1000];
 
   const fetchAll = () => {
     if (!projectId) return;
@@ -102,6 +108,30 @@ export function ProjectFunding() {
   const isOpen = hasCampaign && fundingSummary?.status === "OPEN";
   const isFullyFunded = hasCampaign && fundingSummary?.status === "FULLY_FUNDED";
   const isClosed = hasCampaign && fundingSummary?.status === "CLOSED";
+
+  const setAmountAndError = (value) => {
+    setAmount(value);
+    if (rupeesToMinor(value) === null && String(value ?? "").trim() !== "") {
+      setAmountError(
+        "Enter a positive amount of at least ₹0.01, e.g. 500 for ₹500 or 500.50 for ₹500.50."
+      );
+    } else {
+      setAmountError(null);
+    }
+  };
+
+  const continueToDemoPayment = () => {
+    const minor = rupeesToMinor(amount);
+    if (minor === null) {
+      setAmountError(
+        "Enter a valid amount first — at least ₹0.01, as whole rupees with up to two decimals."
+      );
+      return;
+    }
+    // The amount travels as a decimal rupee string; the server receives only
+    // integer minor units computed on the demo-payment page.
+    navigate(`/projects/${projectId}/funding/demo-payment?amount=${encodeURIComponent(amount)}`);
+  };
 
   return (
     <div className="detail-page">
@@ -184,20 +214,69 @@ export function ProjectFunding() {
               </p>
 
               {isOpen && (
-                <div
-                  className="funding-coming-soon"
-                  style={{ marginTop: "var(--space-5)" }}
-                >
-                  <h3 className="funding-coming-soon-title">
-                    Secure online support is coming soon
-                  </h3>
-                  <p>
-                    Online contributions are not enabled yet. AIKYRA is not a
-                    payment processor — when support opens, you will be taken
-                    through a verified payment flow, and no money is ever
-                    requested on this page today.
+                <section className="demo-support" style={{ marginTop: "var(--space-5)" }}>
+                  <div className="demo-support-head">
+                    <span className="section-kicker">Demo support</span>
+                    <span className="badge-demo">Demo</span>
+                  </div>
+                  <h3 className="related-title">Support this solution</h3>
+                  <p className="funding-note">
+                    Help demonstrate how community support will work for
+                    verified solutions. This is a presentation demo — no real
+                    money is charged.
                   </p>
-                </div>
+
+                  <div className="funding-amount-input demo-amount-input">
+                    <span className="funding-amount-prefix" aria-hidden="true">
+                      ₹
+                    </span>
+                    <input
+                      id="demo-support-amount"
+                      className={`form-control${amountError ? " has-error" : ""}`}
+                      type="number"
+                      inputMode="decimal"
+                      min="0.01"
+                      step="0.01"
+                      value={amount}
+                      onChange={(e) => setAmountAndError(e.target.value)}
+                      placeholder="e.g. 500"
+                      aria-invalid={amountError ? "true" : undefined}
+                    />
+                  </div>
+                  {amountError && (
+                    <span className="form-helper is-invalid" role="alert">
+                      {amountError}
+                    </span>
+                  )}
+
+                  <div className="demo-quick-amounts" aria-label="Quick amounts">
+                    {QUICK_AMOUNTS.map((q) => (
+                      <button
+                        key={q}
+                        type="button"
+                        className={`demo-quick-btn${amount === String(q) ? " is-active" : ""}`}
+                        onClick={() => setAmountAndError(String(q))}
+                      >
+                        ₹{q.toLocaleString("en-IN")}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="demo-support-actions">
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={continueToDemoPayment}
+                    >
+                      Continue to demo payment
+                    </button>
+                  </div>
+
+                  <p className="demo-support-note">
+                    ℹ Demo only — no real money is charged. Online contributions
+                    are coming soon.
+                  </p>
+                </section>
               )}
               {isFullyFunded && (
                 <div
