@@ -120,4 +120,14 @@ class ChallengeListResponse(BaseModel):
 
 
 class ChallengeDetailResponse(ChallengeListItem):
-    """Single challenge with its embedded DNA summary (or null if unanalyzed)."""
+    """Single challenge with its embedded DNA summary (or null if unanalyzed).
+
+    The only response shape that exposes precise coordinates (latitude/
+    longitude) — these power the public "View on map" link. Consistently with
+    the public challenge itself (text location and photo evidence), coordinates
+    are public. List/discovery items and create/update echoes do NOT expose
+    them, keeping the public surface minimal.
+    """
+
+    latitude: float | None = None
+    longitude: float | None = None

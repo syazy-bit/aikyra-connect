@@ -5,6 +5,7 @@ import {
   getRelatedChallenges,
   getDna,
   getChallengeImageUrl,
+  getChallengeMapUrl,
 } from "../services/challengeService.js";
 import { StatusBadge } from "../components/StatusBadge.jsx";
 import { LoadingSpinner } from "../components/LoadingSpinner.jsx";
@@ -144,6 +145,16 @@ export function ChallengeDetail() {
                   <circle cx="12" cy="10" r="3" />
                 </svg>
                 <span><strong>Location:</strong> {challenge.location}</span>
+                {getChallengeMapUrl(challenge) && (
+                  <a
+                    className="map-link"
+                    href={getChallengeMapUrl(challenge)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    View on map ↗
+                  </a>
+                )}
               </div>
 
               <div className="detail-meta-item">

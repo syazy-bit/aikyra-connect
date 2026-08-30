@@ -117,3 +117,22 @@ export function getChallengeImageUrl(challenge) {
   if (!challenge || !challenge.id || !challenge.has_image) return null;
   return apiUrl(`/api/challenges/${encodeURIComponent(challenge.id)}/image`);
 }
+
+/**
+ * No-key Google Maps URL for a challenge's public coordinates (lat/lng).
+ * Coordinates only exist on the detail response; when either is missing or
+ * out of range, returns null so callers render no broken map link.
+ * @param {{ latitude?: number|null, longitude?: number|null }} challenge
+ */
+export function getChallengeMapUrl(challenge) {
+  const lat = challenge?.latitude;
+  const lng = challenge?.longitude;
+  if (
+    typeof lat !== "number" || typeof lng !== "number" ||
+    !Number.isFinite(lat) || !Number.isFinite(lng) ||
+    lat < -90 || lat > 90 || lng < -180 || lng > 180
+  ) {
+    return null;
+  }
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lat + "," + lng)}`;
+}

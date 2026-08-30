@@ -30,6 +30,17 @@ def _to_list_item(challenge: Challenge, dna) -> ChallengeListItem:
     )
 
 
+def _to_detail_item(challenge: Challenge, dna) -> ChallengeDetailResponse:
+    """Detail item: the only shape that exposes precise coordinates, which
+    power the public "View on map" link."""
+    return ChallengeDetailResponse(
+        **ChallengeResponse.model_validate(challenge).model_dump(),
+        dna=ProblemDnaSummary.model_validate(dna) if dna is not None else None,
+        latitude=challenge.latitude,
+        longitude=challenge.longitude,
+    )
+
+
 class ChallengeService:
     """Business logic for challenges.
 
@@ -60,6 +71,12 @@ class ChallengeService:
     def update_challenge(self, challenge_id: UUID, payload: ChallengeUpdate) -> Challenge:
         challenge = self.get_challenge(challenge_id)
         data = payload.model_dump(exclude_unset=True, exclude_none=True)
+        # Coordinates are pair-validated upstream. exclude_none would silently
+        # drop an explicit clear ({latitude: null, longitude: null}), so carry
+        # them through explicitly so a clear request persists.
+        if {"latitude", "longitude"} <= set(payload.model_fields_set):
+            data["latitude"] = payload.latitude
+            data["longitude"] = payload.longitude
         if not data:
             return challenge
         updated = self.repository.update(challenge, data)
@@ -133,7 +150,7 @@ class ChallengeService:
 
     def get_challenge_detail(self, challenge_id: UUID) -> "ChallengeDetailResponse":
         challenge, dna = self.get_challenge_with_dna(challenge_id)
-        return _to_list_item(challenge, dna)
+        return _to_detail_item(challenge, dna)
 
     def get_related(self, challenge_id: UUID, limit: int = 5) -> list[RelatedChallenge]:
         """Deterministic related challenges based on reliable DNA only."""

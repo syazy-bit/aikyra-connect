@@ -1355,6 +1355,79 @@ textarea.form-control {
 }
 
 /* ==========================================================================
+   Precise Location (Geolocation) & "View on map" styles
+   ========================================================================== */
+
+.geo-section {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.geo-helper {
+  margin-bottom: var(--space-2);
+}
+
+.geo-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.geo-note {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.geo-note-requesting {
+  color: var(--text-muted);
+}
+
+.geo-note-success {
+  color: var(--color-success-700, #15803d);
+}
+
+.geo-note-error {
+  color: var(--color-danger-600);
+}
+
+.geo-coords {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.geo-success {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.geo-remove {
+  align-self: flex-start;
+}
+
+.geo-error {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.map-link {
+  margin-left: var(--space-2);
+  font-weight: 600;
+  color: var(--color-primary-600, var(--color-brand-600, inherit));
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.map-link:hover {
+  text-decoration: underline;
+}
+
+
+/* ==========================================================================
    Challenges Discovery Page Styles
    ========================================================================== */
 .challenges-page {

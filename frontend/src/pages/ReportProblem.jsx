@@ -26,6 +26,13 @@ export function ReportProblem() {
   const [photoFile, setPhotoFile] = useState(null);
   const [photoUploadError, setPhotoUploadError] = useState(null);
 
+  // Optional public precise coordinates (Geolocation API). Captured only on
+  // explicit button click — never on mount, no background tracking. Stored as
+  // a pair; both are sent together (or neither).
+  const [coords, setCoords] = useState(null); // { latitude, longitude } | null
+  const [geoStatus, setGeoStatus] = useState("idle"); // idle | requesting | success | error
+  const [geoError, setGeoError] = useState(null);
+
   // Validation State
   const [touched, setTouched] = useState({
     title: false,
@@ -100,6 +107,52 @@ export function ReportProblem() {
     setErrors((prev) => ({ ...prev, [name]: errorMsg }));
   };
 
+  // Map raw Geolocation error codes to friendly, copy-safe messages.
+  const describeGeoError = (err) => {
+    switch (err?.code) {
+      case err?.PERMISSION_DENIED:
+        return "Location access was denied. You can still submit with a written location.";
+      case err?.POSITION_UNAVAILABLE:
+        return "Your current location could not be determined. Please try again or type the location.";
+      case err?.TIMEOUT:
+        return "Location lookup timed out. Please try again or type the location.";
+      default:
+        return "We could not get your location. Please try again or type the location.";
+    }
+  };
+
+  const handleUseMyLocation = () => {
+    if (!navigator.geolocation) {
+      setGeoStatus("error");
+      setGeoError("Your browser doesn't support location. Please type the location instead.");
+      return;
+    }
+    setGeoStatus("requesting");
+    setGeoError(null);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setCoords({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
+        setGeoStatus("success");
+        setGeoError(null);
+      },
+      (err) => {
+        setCoords(null);
+        setGeoStatus("error");
+        setGeoError(describeGeoError(err));
+      },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 0 }
+    );
+  };
+
+  const handleRemoveLocation = () => {
+    setCoords(null);
+    setGeoStatus("idle");
+    setGeoError(null);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setApiError(null);
@@ -118,6 +171,12 @@ export function ReportProblem() {
         description: formData.description.trim(),
         location: formData.location.trim(),
       };
+      // Attach precise coordinates only when captured — the backend enforces
+      // both-or-neither, and the pair validator would reject a partial value.
+      if (coords) {
+        payload.latitude = coords.latitude;
+        payload.longitude = coords.longitude;
+      }
 
       const result = await createChallenge(payload);
 
@@ -155,6 +214,9 @@ export function ReportProblem() {
     setApiError(null);
     setPhotoFile(null);
     setPhotoUploadError(null);
+    setCoords(null);
+    setGeoStatus("idle");
+    setGeoError(null);
     setSubmittedChallenge(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -362,6 +424,72 @@ export function ReportProblem() {
                 <span aria-hidden="true">⚠️</span> {errors.location}
               </div>
             )}
+
+            {/* Precise location (optional, public via "View on map") */}
+            <div className="geo-section">
+              <p id="precise-loc-helper" className="form-helper geo-helper">
+                Optionally capture your precise location so the map link is accurate.
+                It will be attached to this public report.
+              </p>
+
+              {geoStatus === "idle" && (
+                <button
+                  type="button"
+                  onClick={handleUseMyLocation}
+                  className="btn btn-outline btn-sm geo-btn"
+                  disabled={submitting}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10" />
+                    <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+                  </svg>
+                  Use my current location
+                </button>
+              )}
+
+              {geoStatus === "requesting" && (
+                <p className="form-helper geo-note geo-note-requesting" role="status">
+                  <LoadingSpinner size="sm" message="" center={false} />
+                  Getting your location…
+                </p>
+              )}
+
+              {geoStatus === "success" && coords && (
+                <div className="geo-success" role="status">
+                  <p className="form-helper geo-note geo-note-success">
+                    <span aria-hidden="true">✓</span> Precise location added — it will
+                    appear as a "View on map" link on this public report.
+                    <span className="geo-coords">
+                      ({coords.latitude.toFixed(4)}, {coords.longitude.toFixed(4)})
+                    </span>
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleRemoveLocation}
+                    className="btn btn-outline btn-sm geo-btn geo-remove"
+                    disabled={submitting}
+                  >
+                    Remove precise location
+                  </button>
+                </div>
+              )}
+
+              {geoStatus === "error" && (
+                <div className="geo-error" role="alert">
+                  <p className="form-helper geo-note geo-note-error">
+                    <span aria-hidden="true">⚠️</span> {geoError}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleUseMyLocation}
+                    className="btn btn-outline btn-sm geo-btn"
+                    disabled={submitting}
+                  >
+                    Try again
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* 4. Optional Photo Evidence (public, uploaded separately & authenticated) */}

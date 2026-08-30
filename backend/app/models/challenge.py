@@ -1,8 +1,9 @@
 import enum
 import uuid
 from datetime import datetime
+from decimal import Decimal
 
-from sqlalchemy import Computed, DateTime, Enum, Index, String, Text, func
+from sqlalchemy import CheckConstraint, Computed, DateTime, Enum, Index, Numeric, String, Text, func
 from sqlalchemy.dialects.postgresql import TSVECTOR, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -34,6 +35,12 @@ class Challenge(Base):
     # evidence (e.g. "reports/<uuid>.jpg"). Null when no image was attached.
     # Never a full path, URL, or client-supplied filename.
     image_path: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Optional public precise coordinates (Geolocation API). Stored as a
+    # pair (both NULL or both set) enforced by ck_challenges_coordinate_pair.
+    # Full 6-decimal precision (~0.1 m). Postgres numeric natively rejects
+    # NaN/Infinity.
+    latitude: Mapped[Decimal | None] = mapped_column(Numeric(9, 6), nullable=True)
+    longitude: Mapped[Decimal | None] = mapped_column(Numeric(9, 6), nullable=True)
     status: Mapped[ChallengeStatus] = mapped_column(
         Enum(
             ChallengeStatus,
@@ -65,4 +72,17 @@ class Challenge(Base):
         Index("ix_challenges_status", "status"),
         Index("ix_challenges_created_at", "created_at"),
         Index("ix_challenges_search_vector", "search_vector", postgresql_using="gin"),
+        CheckConstraint(
+            "latitude IS NULL OR (latitude >= -90 AND latitude <= 90)",
+            name="ck_challenges_latitude_range",
+        ),
+        CheckConstraint(
+            "longitude IS NULL OR (longitude >= -180 AND longitude <= 180)",
+            name="ck_challenges_longitude_range",
+        ),
+        CheckConstraint(
+            "(latitude IS NULL AND longitude IS NULL) "
+            "OR (latitude IS NOT NULL AND longitude IS NOT NULL)",
+            name="ck_challenges_coordinate_pair",
+        ),
     )
