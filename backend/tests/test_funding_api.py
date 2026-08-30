@@ -8,8 +8,9 @@ with at least one completed contribution); server-side progress math (basis
 points, capped at 10000, never a client-supplied percentage); the derived
 OPEN / FULLY_FUNDED / CLOSED status (FULLY_FUNDED never stored); 404 for
 unknown projects; DB-level rejection of zero/negative amounts; privacy
-(no contribution, amount, supporter account or email ever returned); the
-absence of write endpoints (a project's funding is read-only in this slice);
+(no contribution, amount, supporter account or email ever returned);
+contribution-write verbs (PUT/DELETE) remain 405 (owner management POST/PATCH
+live in test_funding_management_api.py);
 embedded summaries on the project list and detail; and regression that the
 funding surface never disturbs the CP6 lifecycle / CP7 impact surfaces.
 """
@@ -325,11 +326,16 @@ def test_invalid_project_id_422(client):
     assert resp.status_code == 422
 
 
-def test_no_write_endpoints_405(auth_client, client):
+def test_no_contribution_write_verbs_405(auth_client, client):
+    """PUT/DELETE remain unsupported verbs on the funding surface.
+
+    POST (publish) and PATCH (edit) are owner-management endpoints added in
+    Phase 11, covered by tests/test_funding_management_api.py. There is still
+    no way for an anonymous client to write: PUT/DELETE are 405, and any
+    ownership mutation requires authentication + the ACTIVE team-lead rule.
+    """
     project = _accepted_project(auth_client)
-    assert client.post(f"/api/projects/{project['id']}/funding", json={}).status_code == 405
     assert client.put(f"/api/projects/{project['id']}/funding", json={}).status_code == 405
-    assert client.patch(f"/api/projects/{project['id']}/funding", json={}).status_code == 405
     assert client.delete(f"/api/projects/{project['id']}/funding").status_code == 405
 
 

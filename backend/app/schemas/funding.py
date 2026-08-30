@@ -7,9 +7,39 @@ floating point. status is one of OPEN / FULLY_FUNDED / CLOSED, where
 FULLY_FUNDED is derived from the money math (raised >= goal) — never stored.
 """
 
+from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class FundingGoalCreate(BaseModel):
+    """Payload for publishing a verified funding goal on a project.
+
+    Only the goal amount (integer minor units) and the mandatory INR currency
+    are accepted. project_id is taken from the URL path; identity, totals,
+    supporter counts, status and every other field are rejected (422) — the
+    client can never forge what belongs to whom or how much exists.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    goal_minor: int = Field(gt=0, le=9223372036854775807, description="Goal amount in paise (integer minor units)")
+    currency: Literal["INR"] = "INR"
+
+
+class FundingGoalUpdate(BaseModel):
+    """Payload for editing a verified funding goal.
+
+    Only goal_minor is editable and only while the goal is OPEN — currency is
+    permanently INR, project_id is never changeable, and totals/status/identity
+    fields are rejected (422). The service forbids lowering the goal below the
+    already-raised completed amount (409).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    goal_minor: int = Field(gt=0, le=9223372036854775807, description="Goal amount in paise (integer minor units)")
 
 
 class FundingSummary(BaseModel):

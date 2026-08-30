@@ -45,6 +45,50 @@ export async function getProjectFunding(id) {
 }
 
 /**
+ * Publish a verified funding goal on an approved solution (team lead only).
+ * The server enforces authorization (project -> team -> ACTIVE lead) and
+ * rejects a second goal for the same project (409). Amounts are integer
+ * minor units (paise); the server never accepts floats.
+ * @param {string} projectId
+ * @param {{goal_minor: number, currency?: string}} payload
+ */
+export async function createFundingGoal(projectId, payload) {
+  if (!projectId) throw new Error("Project ID is required");
+  return apiRequest(`/api/projects/${encodeURIComponent(projectId)}/funding`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+/**
+ * Edit an OPEN funding goal's amount (team lead only). The server forbids
+ * lowering the goal below the completed money already raised (409) and edits
+ * on a closed goal (409).
+ * @param {string} projectId
+ * @param {{goal_minor: number}} payload
+ */
+export async function updateFundingGoal(projectId, payload) {
+  if (!projectId) throw new Error("Project ID is required");
+  return apiRequest(`/api/projects/${encodeURIComponent(projectId)}/funding`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+/**
+ * Close an OPEN funding goal (team lead only). Closing is terminal and
+ * preserves contribution history and totals.
+ * @param {string} projectId
+ */
+export async function closeFundingGoal(projectId) {
+  if (!projectId) throw new Error("Project ID is required");
+  return apiRequest(
+    `/api/projects/${encodeURIComponent(projectId)}/funding/close`,
+    { method: "POST" }
+  );
+}
+
+/**
  * Advance a project's lifecycle (prototype -> pilot -> implemented).
  * Only the project team's active lead may do this; the server enforces it.
  * @param {string} projectId

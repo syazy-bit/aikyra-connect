@@ -19,6 +19,7 @@ import { ProposalDetail } from "./pages/ProposalDetail.jsx";
 import { Projects } from "./pages/Projects.jsx";
 import { ProjectDetail } from "./pages/ProjectDetail.jsx";
 import { ProjectFunding } from "./pages/ProjectFunding.jsx";
+import { ProjectFundingManage } from "./pages/ProjectFundingManage.jsx";
 import { Dashboard } from "./pages/Dashboard.jsx";
 
 function AppContent() {
@@ -72,6 +73,12 @@ function AppContent() {
         return <ProjectDetail />;
       case "project-funding":
         return <ProjectFunding />;
+      case "project-funding-manage":
+        return (
+          <ProtectedRoute>
+            <ProjectFundingManage />
+          </ProtectedRoute>
+        );
       case "dashboard":
         return <Dashboard />;
       default:

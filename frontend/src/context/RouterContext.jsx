@@ -85,6 +85,15 @@ export function RouterProvider({ children }) {
     if (path === "/projects") return { name: "projects", params: {}, query: params };
     if (path === "/impact") return { name: "dashboard", params: {}, query: {} };
 
+    const projectFundingManageMatch = path.match(/^\/projects\/([^/]+)\/funding\/manage$/);
+    if (projectFundingManageMatch) {
+      return {
+        name: "project-funding-manage",
+        params: { id: projectFundingManageMatch[1] },
+        query: params,
+      };
+    }
+
     const projectFundingMatch = path.match(/^\/projects\/([^/]+)\/funding$/);
     if (projectFundingMatch) {
       return {

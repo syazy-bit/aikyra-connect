@@ -3966,3 +3966,52 @@ textarea.form-control {
   line-height: 1.55;
   color: var(--text-secondary);
 }
+
+/* Owner funding management (Workspace) */
+.funding-amount-input {
+  position: relative;
+  max-width: 24rem;
+}
+
+.funding-amount-prefix {
+  position: absolute;
+  left: 0.875rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-weight: 700;
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+.funding-amount-input .form-control {
+  padding-left: 2.25rem;
+  font-weight: 600;
+}
+
+.management-divider {
+  height: 1px;
+  background-color: var(--border-subtle);
+  margin: var(--space-6) 0 var(--space-5);
+}
+
+.management-danger-zone {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.btn-danger {
+  background-color: var(--color-danger-600);
+  color: var(--color-white);
+  border-color: var(--color-danger-600);
+  box-shadow: var(--shadow-xs);
+}
+
+.btn-danger:hover {
+  background-color: var(--color-danger-700);
+  border-color: var(--color-danger-700);
+  color: var(--color-white);
+  box-shadow: var(--shadow-sm);
+}

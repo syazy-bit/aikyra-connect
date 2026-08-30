@@ -5,6 +5,7 @@ import { useApiResource } from "../hooks/useApiResource.js";
 import {
   listTeams,
   getMyInvitations,
+  getTeamMembers,
   createTeam,
   acceptInvitation,
   declineInvitation,
@@ -396,6 +397,51 @@ export function Workspace() {
     () => new Map(teamItems.map((t) => [t.id, t])),
     [teamItems]
   );
+
+  // --- Funding management rights ------------------------------------------
+  // UX-only optimization: the "Manage funding" entry is shown only for teams
+  // whose ACTIVE lead is the current user, i.e. the exact rule the backend
+  // enforces (project -> team -> ACTIVE membership -> LEAD). Visibility here
+  // is decoration; the API remains the security boundary.
+  const approvedTeamIds = useMemo(
+    () => Array.from(new Set(approvedForMe.map((project) => project.team_id))),
+    [approvedForMe]
+  );
+
+  const [leadTeamIds, setLeadTeamIds] = useState(() => new Set());
+
+  useEffect(() => {
+    if (approvedTeamIds.length === 0) {
+      setLeadTeamIds(new Set());
+      return undefined;
+    }
+    let cancelled = false;
+    const load = async () => {
+      const entries = await Promise.all(
+        approvedTeamIds.map(async (teamId) => {
+          try {
+            const members = await getTeamMembers(teamId);
+            const isLeader = (members.items ?? []).some(
+              (membership) =>
+                membership.user_id === user?.id && membership.role === "lead"
+            );
+            return [teamId, isLeader];
+          } catch {
+            return [teamId, false];
+          }
+        })
+      );
+      if (!cancelled) {
+        setLeadTeamIds(
+          new Set(entries.filter(([, isLeader]) => isLeader).map(([teamId]) => teamId))
+        );
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [approvedTeamIds, user?.id]);
 
   const proposalCounts = useMemo(() => {
     const counts = new Map();
@@ -968,12 +1014,22 @@ export function Workspace() {
                                   }`}
                             </span>
                           </span>
-                          <Link
-                            href={`/projects/${project.id}`}
-                            className="btn btn-secondary btn-sm"
-                          >
-                            View
-                          </Link>
+                          <span className="invite-actions">
+                            <Link
+                              href={`/projects/${project.id}`}
+                              className="btn btn-secondary btn-sm"
+                            >
+                              View
+                            </Link>
+                            {leadTeamIds.has(project.team_id) && (
+                              <Link
+                                href={`/projects/${project.id}/funding/manage`}
+                                className="btn btn-outline btn-sm"
+                              >
+                                Manage funding
+                              </Link>
+                            )}
+                          </span>
                         </div>
                       ))}
                     </div>

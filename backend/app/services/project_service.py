@@ -204,15 +204,83 @@ class ProjectService:
         """
         return self.funding_service.get_public_funding(project_id)
 
+    def create_funding_goal(
+        self,
+        project_id: UUID,
+        user_id: UUID,
+        goal_minor: int,
+        currency: str = "INR",
+    ) -> dict:
+        """Publish a verified funding goal on an approved solution.
+
+        Authorization reuses the platform's project-lead rule — the project ->
+        its team -> the caller's ACTIVE team membership -> its LEAD role, all
+        resolved from the database (see `_require_project_lead`). Every
+        approved solution is funding-eligible: projects exist only for
+        accepted proposals, so there is no separate eligibility gate to
+        invent. The goal is a 1:1 project singleton (409 on a second goal).
+
+        Returns the server-derived public summary — raised_minor and
+        supporter_count are recomputed from the contribution table, never
+        echoed from the client.
+        """
+        self._require_project_lead(project_id, user_id, "publish the funding goal")
+        try:
+            goal = self.funding_service.create_goal(
+                project_id, goal_minor, currency=currency
+            )
+            self._commit()
+        except IntegrityError:
+            self.db.rollback()
+            raise ConflictError("This project already has a funding goal.") from None
+        self.db.refresh(goal)
+        return self.get_public_funding(project_id)
+
+    def update_funding_goal(
+        self, project_id: UUID, user_id: UUID, goal_minor: int
+    ) -> dict:
+        """Edit an OPEN funding goal's amount.
+
+        Lead-only, exactly like create. Editing requires the goal to be OPEN
+        (409 if closed) and forbids lowering the target below the completed
+        money already raised (409) — FULLY_FUNDED stays a true derivation, and
+        totals/status/identity are never editable. Returns the recomputed
+        public summary.
+        """
+        self._require_project_lead(project_id, user_id, "edit the funding goal")
+        goal = self.funding_service.update_goal(project_id, goal_minor)
+        self._commit()
+        self.db.refresh(goal)
+        return self.get_public_funding(project_id)
+
+    def close_funding_goal(self, project_id: UUID, user_id: UUID) -> dict:
+        """Close an OPEN funding goal (terminal lifecycle state).
+
+        Lead-only. Closing is a stored lifecycle transition: contribution rows
+        and their totals are preserved, nothing is reset, and no FULLY_FUNDED
+        state is fabricated. Returns the recomputed public summary, which now
+        reports CLOSED (CLOSED always takes precedence over derived
+        FULLY_FUNDED).
+        """
+        self._require_project_lead(project_id, user_id, "close the funding goal")
+        goal = self.funding_service.close_goal(project_id)
+        self._commit()
+        self.db.refresh(goal)
+        return self.get_public_funding(project_id)
+
     # --- Impact metrics (CP7) ----------------------------------------------
 
-    def _require_project_lead(self, project_id: UUID, user_id: UUID) -> Project:
+    def _require_project_lead(
+        self, project_id: UUID, user_id: UUID, action: str = "manage impact metrics"
+    ) -> Project:
         """Resolve a project and verify the caller is its ACTIVE team lead.
 
         Authorization is resolved entirely from the database at request time:
         the project -> its team -> the caller's ACTIVE team membership -> its
         LEAD role. Client-supplied identity, role and membership fields are
-        never trusted.
+        never trusted. This is the single project-lead rule reused across the
+        lifecycle (CP6), impact metrics (CP7), outcome reports (CP8) and
+        community funding management.
 
         Raises NotFoundError if the project does not exist.
         Raises ForbiddenError if the caller is not the active team lead.
@@ -226,7 +294,7 @@ class ProjectService:
         )
         if membership is None or membership.role != TeamRole.LEAD:
             raise ForbiddenError(
-                "Only the active team lead can manage impact metrics."
+                f"Only the active team lead can {action}."
             )
         return project
 

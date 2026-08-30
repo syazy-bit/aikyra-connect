@@ -2,7 +2,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import ConflictError, NotFoundError
 from app.models.funding_goal import FundingGoal, FundingGoalStatus
 from app.repositories.funding_repository import FundingRepository
 from app.repositories.project_repository import ProjectRepository
@@ -74,6 +74,76 @@ class FundingService:
             )
             for goal in goals
         }
+
+    # --- Owner management (authorization + commit live in ProjectService) -----
+
+    def get_goal(self, project_id: UUID) -> FundingGoal | None:
+        """The project's stored funding goal, or None when none exists."""
+        return self.funding_repository.get_goal_by_project(project_id)
+
+    def create_goal(
+        self, project_id: UUID, goal_minor: int, currency: str = "INR"
+    ) -> FundingGoal:
+        """Create the project's funding goal (1:1 singleton).
+
+        Flush-of-record write only — the caller owns the transaction and maps
+        any IntegrityError (e.g. the UNIQUE-project race guard) to a 409. A
+        second goal for the same project is rejected up front for a clean,
+        common-path ConflictError before any row is touched.
+        """
+        if self.funding_repository.get_goal_by_project(project_id) is not None:
+            raise ConflictError("This project already has a funding goal.")
+        return self.funding_repository.create_goal(
+            {
+                "project_id": project_id,
+                "goal_minor": goal_minor,
+                "currency": currency,
+                "status": FundingGoalStatus.OPEN,
+            }
+        )
+
+    def update_goal(self, project_id: UUID, goal_minor: int) -> FundingGoal:
+        """Edit an OPEN goal's amount, never the money already raised.
+
+        Only an OPEN goal is editable. Lowering the target below the total of
+        completed contributions is rejected (409): the derived FULLY_FUNDED
+        status must stay a true reflection of real money, never a re-labelled
+        target, and an owner must not be able to retroactively re-draw a goal
+        under what supporters have already given. Raised money is recomputed
+        from the contribution table after every change — it is never editable.
+        """
+        goal = self.funding_repository.get_goal_by_project(project_id)
+        if goal is None:
+            raise NotFoundError("FundingGoal", project_id)
+        if goal.status != FundingGoalStatus.OPEN:
+            raise ConflictError(
+                "A closed funding goal cannot be edited."
+            )
+        raised_minor, _ = self.funding_repository.aggregate_contributions(goal.id)
+        if goal_minor < raised_minor:
+            raise ConflictError(
+                "The funding goal cannot be lowered below the amount already raised."
+            )
+        self.funding_repository.update_goal(goal, {"goal_minor": goal_minor})
+        return goal
+
+    def close_goal(self, project_id: UUID) -> FundingGoal:
+        """Close an OPEN goal (terminal lifecycle state).
+
+        Close only flips the stored lifecycle status to CLOSED. Historical
+        contribution rows and their totals are preserved; totals are never
+        reset and no "fully funded" state is fabricated. CLOSED takes display
+        precedence over the derived FULLY_FUNDED in the summary.
+        """
+        goal = self.funding_repository.get_goal_by_project(project_id)
+        if goal is None:
+            raise NotFoundError("FundingGoal", project_id)
+        if goal.status == FundingGoalStatus.CLOSED:
+            raise ConflictError("This funding goal is already closed.")
+        self.funding_repository.update_goal(
+            goal, {"status": FundingGoalStatus.CLOSED}
+        )
+        return goal
 
     @staticmethod
     def _as_uuid(value: UUID | str) -> UUID:

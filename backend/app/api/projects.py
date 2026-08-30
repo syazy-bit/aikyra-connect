@@ -8,7 +8,12 @@ from app.core.database import get_db
 from app.core.exceptions import NotFoundError
 from app.dependencies.auth import get_current_user
 from app.models.user import User
-from app.schemas.funding import FundingResponse
+from app.schemas.funding import (
+    FundingGoalCreate,
+    FundingGoalUpdate,
+    FundingResponse,
+    FundingSummary,
+)
 from app.schemas.impact_metric import (
     ImpactMetricCreate,
     ImpactMetricResponse,
@@ -233,6 +238,80 @@ def get_project_funding(
     return FundingResponse(
         project_id=project_id,
         funding=service.get_public_funding(project_id),
+    )
+
+
+@router.post(
+    "/{project_id}/funding",
+    response_model=FundingSummary,
+    status_code=status.HTTP_201_CREATED,
+)
+def publish_funding_goal(
+    project_id: UUID,
+    payload: FundingGoalCreate,
+    current_user: User = Depends(get_current_user),
+    service: ProjectService = Depends(get_project_service),
+) -> FundingSummary:
+    """Publish a verified funding goal for an approved solution.
+
+    Only the project's ACTIVE team lead may do this — authorization is
+    resolved from the database (project -> team -> LEAD membership), never
+    from the payload. The project is taken from the URL path; the goal is a
+    1:1 project singleton (a second goal -> 409). Only the goal amount (integer
+    minor units, INR) is accepted; project_id, totals, supporter counts,
+    status and identity fields are rejected (422). The response is the
+    server-derived public summary, never a client echo.
+    """
+    return FundingSummary.model_validate(
+        service.create_funding_goal(
+            project_id=project_id,
+            user_id=current_user.id,
+            goal_minor=payload.goal_minor,
+            currency=payload.currency,
+        )
+    )
+
+
+@router.patch("/{project_id}/funding", response_model=FundingSummary)
+def edit_funding_goal(
+    project_id: UUID,
+    payload: FundingGoalUpdate,
+    current_user: User = Depends(get_current_user),
+    service: ProjectService = Depends(get_project_service),
+) -> FundingSummary:
+    """Edit an OPEN funding goal's amount (team lead only).
+
+    Same DB-backed lead authorization and URL-path project identity as
+    publish. A closed goal or a goal lowered below the completed money
+    already raised is rejected (409); totals, status, currency and identity
+    are never editable. Responds with the recomputed server-derived summary.
+    """
+    return FundingSummary.model_validate(
+        service.update_funding_goal(
+            project_id=project_id,
+            user_id=current_user.id,
+            goal_minor=payload.goal_minor,
+        )
+    )
+
+
+@router.post("/{project_id}/funding/close", response_model=FundingSummary)
+def close_funding_goal(
+    project_id: UUID,
+    current_user: User = Depends(get_current_user),
+    service: ProjectService = Depends(get_project_service),
+) -> FundingSummary:
+    """Close an OPEN funding goal (team lead only).
+
+    Closing is a stored lifecycle transition: historical contributions and
+    their totals are preserved, nothing is fabricated, and the summary now
+    reports CLOSED (which takes precedence over derived FULLY_FUNDED).
+    """
+    return FundingSummary.model_validate(
+        service.close_funding_goal(
+            project_id=project_id,
+            user_id=current_user.id,
+        )
     )
 
 
