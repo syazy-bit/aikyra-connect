@@ -2,7 +2,7 @@
  * Challenge Service — handles all communication with the FastAPI Challenge Engine.
  */
 
-import { apiRequest } from "./api.js";
+import { apiRequest, apiUrl } from "./api.js";
 
 function buildQuery(params) {
   const search = new URLSearchParams();
@@ -90,4 +90,30 @@ export async function createChallenge(payload) {
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+/**
+ * Upload the optional public photo evidence for a challenge (authenticated).
+ * Only the image bytes are sent; the stored filename is generated server-side.
+ * @param {string} id
+ * @param {File} file
+ */
+export async function uploadChallengeImage(id, file) {
+  const form = new FormData();
+  form.append("file", file);
+  return apiRequest(`/api/challenges/${encodeURIComponent(id)}/image`, {
+    method: "POST",
+    body: form,
+  });
+}
+
+/**
+ * Absolute/relative URL for a challenge's public photo evidence.
+ * Servers the bytes without auth — challenges and their photos are public.
+ * Returns null when the challenge reports has_image: false.
+ * @param {{ id: string, has_image?: boolean }} challenge
+ */
+export function getChallengeImageUrl(challenge) {
+  if (!challenge || !challenge.id || !challenge.has_image) return null;
+  return apiUrl(`/api/challenges/${encodeURIComponent(challenge.id)}/image`);
 }

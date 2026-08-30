@@ -1,7 +1,13 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    computed_field,
+    field_validator,
+)
 
 from app.models.challenge import ChallengeStatus
 
@@ -52,3 +58,11 @@ class ChallengeResponse(BaseModel):
     status: ChallengeStatus
     created_at: datetime
     updated_at: datetime
+    # Internal server-generated storage reference. Never serialized — the
+    # frontend only needs to know whether public evidence exists.
+    image_path: str | None = Field(default=None, exclude=True)
+
+    @computed_field
+    @property
+    def has_image(self) -> bool:
+        return bool(self.image_path)

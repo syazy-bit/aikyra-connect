@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { Link, useRouter } from "../context/RouterContext.jsx";
-import { createChallenge } from "../services/challengeService.js";
+import { useAuth } from "../context/AuthContext.jsx";
+import { createChallenge, uploadChallengeImage } from "../services/challengeService.js";
 import { Alert } from "../components/Alert.jsx";
 import { LoadingSpinner } from "../components/LoadingSpinner.jsx";
+import { PhotoUpload } from "../components/PhotoUpload.jsx";
 
 const TITLE_MAX_LENGTH = 200;
 const DESC_MAX_LENGTH = 5000;
@@ -10,6 +12,7 @@ const LOCATION_MAX_LENGTH = 200;
 
 export function ReportProblem() {
   const { navigate } = useRouter();
+  const { isAuthenticated } = useAuth();
 
   // Form State
   const [formData, setFormData] = useState({
@@ -17,6 +20,11 @@ export function ReportProblem() {
     description: "",
     location: "",
   });
+
+  // Optional public photo evidence. Uploaded separately AFTER the challenge
+  // is created, because submissions are public but uploads are authenticated.
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoUploadError, setPhotoUploadError] = useState(null);
 
   // Validation State
   const [touched, setTouched] = useState({
@@ -112,6 +120,23 @@ export function ReportProblem() {
       };
 
       const result = await createChallenge(payload);
+
+      if (photoFile) {
+        try {
+          const updated = await uploadChallengeImage(result.id, photoFile);
+          setPhotoUploadError(null);
+          navigate(`/challenges/${updated.id}`);
+          return;
+        } catch (photoErr) {
+          // The problem was submitted but the photo could not be attached.
+          // Never re-submit the challenge; surface the error and keep the ID.
+          setPhotoUploadError(
+            photoErr.message ||
+              "Your problem was submitted, but your photo could not be attached."
+          );
+        }
+      }
+
       setSubmittedChallenge(result);
     } catch (err) {
       setApiError(
@@ -128,6 +153,8 @@ export function ReportProblem() {
     setTouched({ title: false, description: false, location: false });
     setErrors({});
     setApiError(null);
+    setPhotoFile(null);
+    setPhotoUploadError(null);
     setSubmittedChallenge(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -156,6 +183,15 @@ export function ReportProblem() {
               Aikyra community challenge network and visible to researchers, students, and
               community problem solvers.
             </p>
+
+            {photoUploadError && (
+              <div style={{ maxWidth: "34rem", margin: "0 auto var(--space-6)" }}>
+                <Alert type="warning" title="Your photo could not be attached">
+                  {photoUploadError} Your written report was submitted successfully and its
+                  reference has been preserved — no changes were made to your submission.
+                </Alert>
+              </div>
+            )}
 
             <div className="submitted-summary">
               <div className="summary-row">
@@ -325,6 +361,35 @@ export function ReportProblem() {
               <div id="loc-error" className="form-error-msg" role="alert">
                 <span aria-hidden="true">⚠️</span> {errors.location}
               </div>
+            )}
+          </div>
+
+          {/* 4. Optional Photo Evidence (public, uploaded separately & authenticated) */}
+          <div className="form-group">
+            <div className="form-label-wrapper">
+              <label htmlFor="photo-evidence" className="form-label">
+                Photo Evidence <span className="form-label-optional">(optional)</span>
+              </label>
+            </div>
+            <p id="photo-helper" className="form-helper">
+              Attach one photo that shows the problem on the ground. Photos help
+              researchers and students verify and understand your report.
+            </p>
+            <PhotoUpload
+              id="photo-evidence"
+              file={photoFile}
+              onChange={(file) => {
+                setPhotoFile(file);
+                setPhotoUploadError(null);
+              }}
+              disabled={submitting}
+              error={photoUploadError}
+            />
+            {!isAuthenticated && (
+              <p className="form-helper form-helper-auth-note" id="photo-auth-helper">
+                Attaching a photo requires you to be signed in. Your written report is
+                published publicly either way.
+              </p>
             )}
           </div>
 

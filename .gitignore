@@ -39,3 +39,6 @@ Thumbs.db
 *.log
 coverage/
 htmlcov/
+
+# --- Runtime uploads (photo evidence) never committed ---
+backend/uploads/

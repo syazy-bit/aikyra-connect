@@ -30,6 +30,10 @@ class Challenge(Base):
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     location: Mapped[str] = mapped_column(String(200), nullable=False)
+    # Server-generated relative storage reference for optional public photo
+    # evidence (e.g. "reports/<uuid>.jpg"). Null when no image was attached.
+    # Never a full path, URL, or client-supplied filename.
+    image_path: Mapped[str | None] = mapped_column(String(255), nullable=True)
     status: Mapped[ChallengeStatus] = mapped_column(
         Enum(
             ChallengeStatus,

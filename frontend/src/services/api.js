@@ -31,6 +31,16 @@ function clearToken() {
 }
 
 /**
+ * Build a full API URL using the configured base URL (VITE_API_BASE_URL,
+ * or "" for the Vite same-origin proxy). Consumers that build raw URLs —
+ * e.g. <img src> for public endpoints — must use this so they keep working
+ * when the API is served from a different origin.
+ */
+export function apiUrl(endpoint) {
+  return `${BASE_URL}${endpoint}`;
+}
+
+/**
  * Perform an HTTP request and parse the response JSON.
  * Normalizes error messages and details.
  * Automatically includes Authorization header when token exists.
@@ -40,9 +50,15 @@ export async function apiRequest(endpoint, options = {}) {
   const token = getToken();
 
   const headers = {
-    "Content-Type": "application/json",
     ...options.headers,
   };
+
+  // FormData: let the browser set the multipart boundary; the JSON header
+  // would corrupt the body (and confuse the server's multipart parser).
+  const isFormData = options.body instanceof FormData;
+  if (!isFormData) {
+    headers["Content-Type"] = "application/json";
+  }
 
   if (token) {
     headers.Authorization = `Bearer ${token}`;

@@ -109,6 +109,7 @@ class ChallengeListItem(BaseModel):
     created_at: datetime
     updated_at: datetime
     dna: ProblemDnaSummary | None = None
+    has_image: bool = False
 
 
 class ChallengeListResponse(BaseModel):

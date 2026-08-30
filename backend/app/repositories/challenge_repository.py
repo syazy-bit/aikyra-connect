@@ -39,3 +39,8 @@ class ChallengeRepository:
             setattr(challenge, field, value)
         self.db.flush()
         return challenge
+
+    def set_image_path(self, challenge: Challenge, image_path: str | None) -> Challenge:
+        challenge.image_path = image_path
+        self.db.flush()
+        return challenge

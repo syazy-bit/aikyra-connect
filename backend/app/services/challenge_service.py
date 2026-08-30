@@ -2,6 +2,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.core.exceptions import NotFoundError
 from app.models.challenge import Challenge
 from app.repositories.challenge_repository import ChallengeRepository
@@ -19,6 +20,7 @@ from app.services.related_challenge_service import (
     is_eligible,
     score_candidate,
 )
+from app.utils.image_storage import ImageStorage, LocalFileStorage
 
 
 def _to_list_item(challenge: Challenge, dna) -> ChallengeListItem:
@@ -39,6 +41,7 @@ class ChallengeService:
         self.db = db
         self.repository = ChallengeRepository(db)
         self.discovery_repository = DiscoveryRepository(db)
+        self.storage: ImageStorage = LocalFileStorage(get_settings().uploads_dir)
 
     # --- Phase 1 CRUD -------------------------------------------------
 
@@ -63,6 +66,46 @@ class ChallengeService:
         self._commit()
         self.db.refresh(updated)
         return updated
+
+    # --- Photo evidence (public, optional, single image) --------------------
+
+    def upload_image(self, challenge_id: UUID, data: bytes) -> Challenge:
+        """Attach an optional public photo to a challenge.
+
+        The stored file is uniquely named server-side; the client filename,
+        MIME type and extension are never trusted and never used as a path.
+        On a failed upload (validation/storage error) the existing valid image
+        is left untouched. The existing image is removed only after the new
+        reference is durably committed.
+        """
+        challenge = self.get_challenge(challenge_id)
+        new_reference = self.storage.store(data)  # raises ImageValidationError
+        old_reference = challenge.image_path
+        try:
+            self.repository.set_image_path(challenge, new_reference)
+            self._commit()
+        except Exception:
+            # Rollback leaves the DB pointing at the old image; remove the new
+            # orphan file so we never leak disk.
+            self.storage.delete(new_reference)
+            raise
+        if old_reference:
+            self.storage.delete(old_reference)
+        self.db.refresh(challenge)
+        return challenge
+
+    def get_image(self, challenge_id: UUID) -> tuple[bytes, str]:
+        """Return (bytes, content_type) for a challenge's public evidence.
+
+        Raises NotFoundError when the challenge or its image does not exist.
+        """
+        challenge = self.get_challenge(challenge_id)
+        if not challenge.image_path:
+            raise NotFoundError("Image", challenge_id)
+        try:
+            return self.storage.read(challenge.image_path)
+        except (FileNotFoundError, ValueError) as exc:
+            raise NotFoundError("Image", challenge_id) from exc
 
     # --- Phase 3 discovery --------------------------------------------
 

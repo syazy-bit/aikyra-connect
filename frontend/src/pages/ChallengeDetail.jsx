@@ -4,6 +4,7 @@ import {
   getChallenge,
   getRelatedChallenges,
   getDna,
+  getChallengeImageUrl,
 } from "../services/challengeService.js";
 import { StatusBadge } from "../components/StatusBadge.jsx";
 import { LoadingSpinner } from "../components/LoadingSpinner.jsx";
@@ -165,6 +166,25 @@ export function ChallengeDetail() {
               ))}
             </div>
           </div>
+
+          {challenge.has_image && getChallengeImageUrl(challenge) && (
+            <div className="detail-body detail-evidence" aria-labelledby="evidence-heading">
+              <h2 id="evidence-heading" className="detail-section-heading">
+                Photo Evidence
+              </h2>
+              <p className="form-helper evidence-caption">
+                Public photo attached by the person who reported this problem.
+              </p>
+              <figure className="evidence-figure">
+                <img
+                  src={getChallengeImageUrl(challenge)}
+                  alt={`Photo evidence attached to the reported problem: ${challenge.title}`}
+                  className="evidence-image"
+                  loading="lazy"
+                />
+              </figure>
+            </div>
+          )}
         </article>
 
         {/* Problem DNA / intelligence view */}
