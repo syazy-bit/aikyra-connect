@@ -35,7 +35,7 @@ export async function listTeams(params = {}) {
 }
 
 /**
- * Fetch a single team (active member, or owner/representative of the
+ * Fetch a single team (active member, or institution_admin/representative of the
  * team's institution).
  */
 export async function getTeam(id) {

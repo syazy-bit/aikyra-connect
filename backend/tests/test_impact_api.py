@@ -2,7 +2,7 @@
 
 Covers: public read (anonymous and authenticated GET), the lead-only write
 matrix (anonymous 401; active team lead 201/200/204; team member, institution
-owner who is not a lead, unrelated user and platform reviewer all 403), 404s
+admin who is not a lead, unrelated user and platform reviewer all 403), 404s
 (unknown project, unknown metric, and a metric of another project addressed
 through a foreign project URL — cross-project modification is impossible),
 strict request validation (missing/oversized/blank-after-strip fields, and
@@ -141,18 +141,18 @@ def _register_user(db_session, user_client, email):
     return db_session.query(User).filter(User.email == email).first().id
 
 
-def _project_with_member_and_owner(db_session, auth_client, user_client):
+def _project_with_member_and_admin(db_session, auth_client, user_client):
     """Accepted project whose lead is auth_client, plus an active team member
-    (member@aikyra.dev) and an institution owner (owner@aikyra.dev) who is not
+    (member@aikyra.dev) and an institution admin (admin@aikyra.dev) who is not
     on the team. Returns (project dict, team dict, institution dict)."""
     project, inst, team = _accepted_project(auth_client)
 
     member_uid = _register_user(db_session, user_client, "member@aikyra.dev")
     _add_team_member(db_session, team["id"], member_uid)
 
-    _register_user(db_session, user_client, "owner@aikyra.dev")
-    owner_uid = _user_id(db_session, "owner@aikyra.dev")
-    _create_membership(db_session, owner_uid, inst["id"], "owner", "active")
+    _register_user(db_session, user_client, "admin@aikyra.dev")
+    admin_uid = _user_id(db_session, "admin@aikyra.dev")
+    _create_membership(db_session, admin_uid, inst["id"], "institution_admin", "active")
 
     return project, team, inst
 
@@ -192,7 +192,7 @@ def test_anonymous_get_200(client, auth_client):
 
 
 def test_authenticated_get_200(auth_client, user_client, db_session):
-    project, _, _ = _project_with_member_and_owner(db_session, auth_client, user_client)
+    project, _, _ = _project_with_member_and_admin(db_session, auth_client, user_client)
     _create_metric(auth_client, project["id"])
     resp = auth_client.get(f"/api/projects/{project['id']}/impact")
     assert resp.status_code == 200
@@ -231,16 +231,16 @@ def test_anonymous_post_401(client, auth_client):
 
 
 def test_team_member_post_403(db_session, auth_client, user_client):
-    project, _, _ = _project_with_member_and_owner(db_session, auth_client, user_client)
+    project, _, _ = _project_with_member_and_admin(db_session, auth_client, user_client)
     member = user_client("member@aikyra.dev")
     resp = member.post(f"/api/projects/{project['id']}/impact", json=_metric_payload())
     assert resp.status_code == 403
 
 
-def test_institution_owner_not_lead_post_403(db_session, auth_client, user_client):
-    project, _, _ = _project_with_member_and_owner(db_session, auth_client, user_client)
-    owner = user_client("owner@aikyra.dev")
-    resp = owner.post(f"/api/projects/{project['id']}/impact", json=_metric_payload())
+def test_institution_admin_not_lead_post_403(db_session, auth_client, user_client):
+    project, _, _ = _project_with_member_and_admin(db_session, auth_client, user_client)
+    admin = user_client("admin@aikyra.dev")
+    resp = admin.post(f"/api/projects/{project['id']}/impact", json=_metric_payload())
     assert resp.status_code == 403
 
 

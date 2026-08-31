@@ -473,7 +473,7 @@ export function Workspace() {
   const [resolvedInstitutions, setResolvedInstitutions] = useState([]);
   const [resolvingInstitutions, setResolvingInstitutions] = useState(true);
 
-  // --- Review rights: active owner/representative of an institution ---------
+  // --- Review rights: active institution_admin/representative of an institution ---------
   // Computed after resolvedInstitutions is declared (useState above) so the
   // memo never reads the binding before its initializer runs.
   const reviewerInstitutionIds = useMemo(
@@ -483,7 +483,7 @@ export function Workspace() {
           .filter(
             (i) =>
               i.membership_status === "active" &&
-              (i.role === "owner" || i.role === "representative")
+              (i.role === "institution_admin" || i.role === "representative")
           )
           .map((i) => i.id)
       ),

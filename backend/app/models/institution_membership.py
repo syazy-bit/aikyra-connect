@@ -10,7 +10,7 @@ from app.core.database import Base
 
 
 class InstitutionMembershipRole(str, enum.Enum):
-    OWNER = "owner"
+    INSTITUTION_ADMIN = "institution_admin"
     REPRESENTATIVE = "representative"
     FACULTY = "faculty"
     STUDENT = "student"

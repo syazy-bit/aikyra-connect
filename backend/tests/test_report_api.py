@@ -2,7 +2,7 @@
 
 Covers: public read (anonymous and authenticated GET), the lead-only write
 matrix on an *implemented* project (anonymous 401; active team lead
-201/200/204; team member, non-lead institution owner/representative, an
+201/200/204; team member, non-lead institution admin/representative, an
 organization manager, a platform reviewer and an unrelated user all 403), the
 implemented-only lifecycle gate (prototype/pilot -> 409, implemented -> 201),
 the 1:1 singleton rule (a second report on the same project -> 409), 404s
@@ -162,10 +162,10 @@ def _user_id(db_session, email):
     return db_session.query(User).filter(User.email == email).first().id
 
 
-def _project_with_member_and_owner(db_session, auth_client, user_client):
+def _project_with_member_and_admin(db_session, auth_client, user_client):
     """Implemented project whose lead is auth_client, plus an active team
-    member (member@aikyra.dev), a non-lead institution owner
-    (owner@aikyra.dev) and a non-lead institution representative
+    member (member@aikyra.dev), a non-lead institution admin
+    (admin@aikyra.dev) and a non-lead institution representative
     (representative@aikyra.dev). Returns (project dict, team dict, inst)."""
     project, inst, team = _accepted_project(auth_client)
     _implement(auth_client, project["id"])
@@ -173,8 +173,8 @@ def _project_with_member_and_owner(db_session, auth_client, user_client):
     member_uid = _register_user(db_session, user_client, "member@aikyra.dev")
     _add_team_member(db_session, team["id"], member_uid)
 
-    owner_uid = _register_user(db_session, user_client, "owner@aikyra.dev")
-    _create_membership(db_session, owner_uid, inst["id"], "owner", "active")
+    admin_uid = _register_user(db_session, user_client, "admin@aikyra.dev")
+    _create_membership(db_session, admin_uid, inst["id"], "institution_admin", "active")
 
     rep_uid = _register_user(db_session, user_client, "representative@aikyra.dev")
     _create_membership(db_session, rep_uid, inst["id"], "representative", "active")
@@ -215,7 +215,7 @@ def test_anonymous_get_200(auth_client, client):
 
 
 def test_authenticated_get_200(auth_client, user_client, db_session):
-    project, _, _ = _project_with_member_and_owner(db_session, auth_client, user_client)
+    project, _, _ = _project_with_member_and_admin(db_session, auth_client, user_client)
     _create_report(auth_client, project["id"])
     resp = auth_client.get(f"/api/projects/{project['id']}/report")
     assert resp.status_code == 200
@@ -331,7 +331,7 @@ def test_anonymous_post_401(client, auth_client):
 
 
 def test_team_member_post_403(db_session, auth_client, user_client):
-    project, _, _ = _project_with_member_and_owner(db_session, auth_client, user_client)
+    project, _, _ = _project_with_member_and_admin(db_session, auth_client, user_client)
     member = user_client("member@aikyra.dev")
     resp = member.post(
         f"/api/projects/{project['id']}/report", json=_report_payload()
@@ -339,17 +339,17 @@ def test_team_member_post_403(db_session, auth_client, user_client):
     assert resp.status_code == 403
 
 
-def test_institution_owner_not_lead_post_403(db_session, auth_client, user_client):
-    project, _, _ = _project_with_member_and_owner(db_session, auth_client, user_client)
-    owner = user_client("owner@aikyra.dev")
-    resp = owner.post(
+def test_institution_admin_not_lead_post_403(db_session, auth_client, user_client):
+    project, _, _ = _project_with_member_and_admin(db_session, auth_client, user_client)
+    admin = user_client("admin@aikyra.dev")
+    resp = admin.post(
         f"/api/projects/{project['id']}/report", json=_report_payload()
     )
     assert resp.status_code == 403
 
 
 def test_institution_representative_post_403(db_session, auth_client, user_client):
-    project, _, _ = _project_with_member_and_owner(db_session, auth_client, user_client)
+    project, _, _ = _project_with_member_and_admin(db_session, auth_client, user_client)
     representative = user_client("representative@aikyra.dev")
     resp = representative.post(
         f"/api/projects/{project['id']}/report", json=_report_payload()

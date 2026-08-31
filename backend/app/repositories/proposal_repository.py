@@ -11,7 +11,7 @@ from app.models.proposal import Proposal, ProposalStatus
 from app.models.team import Team, TeamMembership, TeamMembershipStatus
 
 
-_VIEW_INSTITUTION_ROLES = ("owner", "representative")
+_VIEW_INSTITUTION_ROLES = ("institution_admin", "representative")
 
 
 class ProposalRepository:
@@ -62,8 +62,8 @@ class ProposalRepository:
         """List proposals the authenticated user is allowed to see.
 
         A proposal is visible only if the user holds an ACTIVE membership on
-        its team, or an ACTIVE owner/representative institution membership at
-        the team's institution. Membership is resolved from the database —
+        its team, or an ACTIVE institution_admin/representative institution
+        membership at the team's institution. Membership is resolved from the database —
         never trusted from the client. This is deliberately stricter than team
         discovery: students/faculty at the institution cannot view proposals.
         """

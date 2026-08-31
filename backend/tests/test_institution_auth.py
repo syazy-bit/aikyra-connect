@@ -1,8 +1,8 @@
 """Phase 4C Checkpoint 2 — Institution Authorization tests.
 
-Covers: auth requirements on institution mutation endpoints, automatic owner
-membership on creation, role-based PATCH access, public read access, membership
-resolution from DB, and mass-assignment rejection.
+Covers: auth requirements on institution mutation endpoints, automatic
+institution_admin membership on creation, role-based PATCH access, public read
+access, membership resolution from DB, and mass-assignment rejection.
 """
 
 import uuid
@@ -62,9 +62,9 @@ def test_create_institution_rejects_invalid_token(client):
     assert response.status_code == 401
 
 
-def test_create_institution_auto_creates_owner_membership(auth_client, db_session):
+def test_create_institution_auto_creates_admin_membership(auth_client, db_session):
     """On successful creation the authenticated user is automatically added
-    as an active owner via the institution_memberships table."""
+    as an active institution_admin via the institution_memberships table."""
     body = _create_institution(auth_client)
     from app.models.user import User
 
@@ -75,7 +75,7 @@ def test_create_institution_auto_creates_owner_membership(auth_client, db_sessio
     ).first()
 
     assert membership is not None
-    assert membership.role == InstitutionMembershipRole.OWNER
+    assert membership.role == InstitutionMembershipRole.INSTITUTION_ADMIN
     assert membership.status == InstitutionMembershipStatus.ACTIVE
 
 
@@ -92,15 +92,15 @@ def test_patch_requires_auth(client, auth_client):
     assert response.status_code == 401
 
 
-def test_patch_owner_can_update(auth_client):
-    """The institution owner can PATCH the institution."""
+def test_patch_admin_can_update(auth_client):
+    """The institution admin can PATCH the institution."""
     created = _create_institution(auth_client)
     response = auth_client.patch(
         f"/api/institutions/{created['id']}",
-        json={"description": "Updated by owner."},
+        json={"description": "Updated by admin."},
     )
     assert response.status_code == 200
-    assert response.json()["description"] == "Updated by owner."
+    assert response.json()["description"] == "Updated by admin."
 
 
 def test_patch_rep_can_update(auth_client, reviewer_client, db_session):
@@ -132,13 +132,14 @@ def test_patch_no_membership_forbidden(auth_client, reviewer_client, db_session)
 
 
 def test_patch_reviewer_role_forbidden(auth_client, reviewer_client, db_session):
-    """A platform reviewer (who is not an owner/rep member) cannot PATCH
-    (write access is owner/rep only). The reviewer role is platform-level
-    and does not grant institution write access."""
+    """A platform reviewer (who is not an institution_admin/rep member) cannot
+    PATCH (write access is institution_admin/rep only). The reviewer role is
+    platform-level and does not grant institution write access."""
     created = _create_institution(auth_client)
     from app.models.user import User
 
-    # reviewer_client is a platform reviewer with no owner/rep membership here
+    # reviewer_client is a platform reviewer with no institution_admin/rep
+    # membership here
     response = reviewer_client.patch(
         f"/api/institutions/{created['id']}",
         json={"description": "Reviewer cannot write."},
@@ -147,13 +148,13 @@ def test_patch_reviewer_role_forbidden(auth_client, reviewer_client, db_session)
 
 
 def test_patch_suspended_member_forbidden(auth_client, reviewer_client, db_session):
-    """A suspended membership (even owner/rep role) is denied."""
+    """A suspended membership (even institution_admin role) is denied."""
     created = _create_institution(auth_client)
     from app.models.user import User
 
     user = db_session.query(User).filter(User.email == "reviewer@aikyra.dev").first()
     _create_membership(
-        db_session, user.id, uuid.UUID(created["id"]), "owner", status="suspended"
+        db_session, user.id, uuid.UUID(created["id"]), "institution_admin", status="suspended"
     )
     response = reviewer_client.patch(
         f"/api/institutions/{created['id']}",
@@ -163,11 +164,11 @@ def test_patch_suspended_member_forbidden(auth_client, reviewer_client, db_sessi
 
 
 def test_patch_other_institution_forbidden(auth_client, reviewer_client, db_session):
-    """Owner of institution A cannot PATCH institution B."""
+    """Institution admin of institution A cannot PATCH institution B."""
     from app.models.user import User
 
     created_a = _create_institution(auth_client, name="Institution A")
-    # Create institution B as the reviewer user (different owner)
+    # Create institution B as the reviewer user (different institution admin)
     created_b = _create_institution(reviewer_client, name="Institution B", website="https://b.example.com")
     response = auth_client.patch(
         f"/api/institutions/{created_b['id']}",
@@ -203,8 +204,8 @@ def test_get_membership_requires_auth(client, auth_client):
     assert response.status_code == 401
 
 
-def test_get_membership_returns_owner(auth_client, db_session):
-    """The owner sees their membership details."""
+def test_get_membership_returns_institution_admin(auth_client, db_session):
+    """The institution admin sees their membership details."""
     created = _create_institution(auth_client)
     from app.models.user import User
 
@@ -212,7 +213,7 @@ def test_get_membership_returns_owner(auth_client, db_session):
     response = auth_client.get(f"/api/institutions/{created['id']}/membership")
     body = response.json()
     assert body["is_member"] is True
-    assert body["role"] == "owner"
+    assert body["role"] == "institution_admin"
     assert body["membership_status"] == "active"
 
 
@@ -237,11 +238,12 @@ def test_get_membership_nonexistent_institution_returns_non_member(auth_client):
 # --- Mass-assignment rejection -------------------------------------------------
 
 
-def test_create_rejects_owner_id_injection(auth_client):
-    """The owner_user_id field must not be injectable via the creation payload."""
+def test_create_rejects_admin_user_id_injection(auth_client):
+    """The institution_admin_user_id field must not be injectable via the
+    creation payload."""
     payload = {
         **MINIMAL_PAYLOAD,
-        "owner_user_id": str(uuid.uuid4()),
+        "institution_admin_user_id": str(uuid.uuid4()),
     }
     response = auth_client.post("/api/institutions", json=payload)
     assert response.status_code == 422
@@ -252,6 +254,6 @@ def test_patch_rejects_role_injection(auth_client):
     created = _create_institution(auth_client)
     response = auth_client.patch(
         f"/api/institutions/{created['id']}",
-        json={"role": "owner", "status": "verified"},
+        json={"role": "institution_admin", "status": "verified"},
     )
     assert response.status_code == 422

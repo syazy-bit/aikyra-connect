@@ -58,12 +58,12 @@ class MembershipRepository:
             )
         ).scalar_one() > 0
 
-    def count_active_owners(self, institution_id: UUID) -> int:
+    def count_active_institution_admins(self, institution_id: UUID) -> int:
         return self.db.execute(
             select(func.count()).select_from(
                 select(InstitutionMembership).where(
                     InstitutionMembership.institution_id == institution_id,
-                    InstitutionMembership.role == "owner",
+                    InstitutionMembership.role == "institution_admin",
                     InstitutionMembership.status == "active",
                 ).subquery()
             )

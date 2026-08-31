@@ -29,7 +29,7 @@ class TeamService:
     """
 
     _ALLOWED_CREATOR_ROLES = (
-        InstitutionMembershipRole.OWNER,
+        InstitutionMembershipRole.INSTITUTION_ADMIN,
         InstitutionMembershipRole.REPRESENTATIVE,
         InstitutionMembershipRole.FACULTY,
         InstitutionMembershipRole.STUDENT,

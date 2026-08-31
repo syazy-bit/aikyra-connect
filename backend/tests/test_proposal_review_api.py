@@ -1,8 +1,8 @@
-"""Phase 5 Checkpoint 4 — Proposal Review (institution owner/representative).
+"""Phase 5 Checkpoint 4 — Proposal Review (institution admin/representative).
 
-Covers: unauthenticated 401s, the authorization matrix (owner and
+Covers: unauthenticated 401s, the authorization matrix (institution_admin and
 representative of the proposal's team institution may review; students,
-ordinary team members, platform reviewers and other-institution owners are
+ordinary team members, platform reviewers and other-institution admins are
 forbidden), the review state machine (submitted -> under_review ->
 accepted|rejected with rejected/accepted terminal, 409 on every invalid
 transition), server control of status/reviewed_at/reviewed_by (+ 422 on
@@ -120,7 +120,7 @@ def _user_id(db_session, email):
 
 
 def _team_context(auth_client):
-    """Create institution + challenge + team under the auth_client owner/lead."""
+    """Create institution + challenge + team under the auth_client admin/lead."""
     inst = _create_institution(auth_client)
     ch = _create_challenge(auth_client)
     team = _create_team(auth_client, inst["id"], ch["id"])
@@ -140,7 +140,7 @@ def _register_institution_member(
 
 
 def _submitted_proposal(auth_client):
-    """Institution (auth_client = owner + lead) with a submitted proposal."""
+    """Institution (auth_client = admin + lead) with a submitted proposal."""
     inst, ch, team = _team_context(auth_client)
     proposal = _create_proposal(auth_client, team["id"], ch["id"])
     response = auth_client.post(f"/api/proposals/{proposal['id']}/submit")
@@ -172,13 +172,13 @@ def test_review_requires_auth(client, auth_client):
 # --- Authorization matrix -----------------------------------------------------
 
 
-def test_owner_can_start_review(auth_client, user_client, db_session):
-    """An ACTIVE institution owner (not a team member) starts the review."""
+def test_institution_admin_can_start_review(auth_client, user_client, db_session):
+    """An ACTIVE institution admin (not a team member) starts the review."""
     inst, ch, team, proposal = _submitted_proposal(auth_client)
     _register_institution_member(
-        db_session, user_client, "reviewer-owner@aikyra.dev", inst["id"], role="owner"
+        db_session, user_client, "reviewer-admin@aikyra.dev", inst["id"], role="institution_admin"
     )
-    response = user_client("reviewer-owner@aikyra.dev").post(
+    response = user_client("reviewer-admin@aikyra.dev").post(
         f"/api/proposals/{proposal['id']}/review", json={"action": "start_review"}
     )
     assert response.status_code == 200
@@ -207,8 +207,8 @@ def test_representative_can_start_review(auth_client, user_client, db_session):
     assert response.json()["status"] == "under_review"
 
 
-def test_owner_who_is_also_team_lead_can_review(auth_client):
-    """The institution owner (who created the team) reviews her own proposal."""
+def test_institution_admin_who_is_also_team_lead_can_review(auth_client):
+    """The institution admin (who created the team) reviews her own proposal."""
     inst, ch, team, proposal = _submitted_proposal(auth_client)
     response = auth_client.post(
         f"/api/proposals/{proposal['id']}/review", json={"action": "start_review"}
@@ -232,7 +232,7 @@ def test_student_at_institution_cannot_review(auth_client, user_client, db_sessi
 def test_team_member_without_review_role_cannot_review(
     auth_client, user_client, db_session
 ):
-    """An ACTIVE team member who is not an owner/rep cannot review (403)."""
+    """An ACTIVE team member who is not an admin/rep cannot review (403)."""
     inst, ch, team, proposal = _submitted_proposal(auth_client)
     uid = _register_institution_member(
         db_session, user_client, "member@aikyra.dev", inst["id"]
@@ -253,10 +253,10 @@ def test_platform_reviewer_cannot_review_proposals(auth_client, reviewer_client)
     assert response.status_code == 403
 
 
-def test_other_institution_owner_cannot_review(auth_client, user_client):
-    """An owner of a DIFFERENT institution cannot review (403)."""
+def test_other_institution_admin_cannot_review(auth_client, user_client):
+    """An institution admin of a DIFFERENT institution cannot review (403)."""
     inst, ch, team, proposal = _submitted_proposal(auth_client)
-    other = user_client("other-owner@aikyra.dev")
+    other = user_client("other-admin@aikyra.dev")
     _create_institution(other, name="Other CP4 Institution")
     response = other.post(
         f"/api/proposals/{proposal['id']}/review", json={"action": "start_review"}
@@ -264,18 +264,18 @@ def test_other_institution_owner_cannot_review(auth_client, user_client):
     assert response.status_code == 403
 
 
-def test_suspended_owner_cannot_review(auth_client, user_client, db_session):
-    """A suspended owner membership grants no review rights (403)."""
+def test_suspended_admin_cannot_review(auth_client, user_client, db_session):
+    """A suspended institution_admin membership grants no review rights (403)."""
     inst, ch, team, proposal = _submitted_proposal(auth_client)
     _register_institution_member(
         db_session,
         user_client,
-        "suspended-owner@aikyra.dev",
+        "suspended-admin@aikyra.dev",
         inst["id"],
-        role="owner",
+        role="institution_admin",
         status="suspended",
     )
-    response = user_client("suspended-owner@aikyra.dev").post(
+    response = user_client("suspended-admin@aikyra.dev").post(
         f"/api/proposals/{proposal['id']}/review", json={"action": "start_review"}
     )
     assert response.status_code == 403
@@ -288,21 +288,21 @@ def test_accept_proposal_success(auth_client, user_client, db_session):
     """accept sets status/reviewed_at/reviewed_by server-side from the reviewer."""
     inst, ch, team, proposal = _submitted_proposal(auth_client)
     _register_institution_member(
-        db_session, user_client, "reviewer-owner@aikyra.dev", inst["id"], role="owner"
+        db_session, user_client, "reviewer-admin@aikyra.dev", inst["id"], role="institution_admin"
     )
-    owner = user_client("reviewer-owner@aikyra.dev")
-    _start_review(owner, proposal)
-    response = owner.post(
+    admin = user_client("reviewer-admin@aikyra.dev")
+    _start_review(admin, proposal)
+    response = admin.post(
         f"/api/proposals/{proposal['id']}/review", json={"action": "accept"}
     )
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "accepted"
     assert body["reviewed_at"] is not None
-    assert body["reviewed_by"] == str(_user_id(db_session, "reviewer-owner@aikyra.dev"))
+    assert body["reviewed_by"] == str(_user_id(db_session, "reviewer-admin@aikyra.dev"))
 
     # Accept materializes the approved-solution project (Phase 6 hook).
-    projects = owner.get("/api/projects")
+    projects = admin.get("/api/projects")
     assert projects.status_code == 200
     assert projects.json()["total"] == 1
 
@@ -311,11 +311,11 @@ def test_accept_proposal_with_note(auth_client, user_client, db_session):
     """A review note supplied at accept is persisted."""
     inst, ch, team, proposal = _submitted_proposal(auth_client)
     _register_institution_member(
-        db_session, user_client, "reviewer-owner@aikyra.dev", inst["id"], role="owner"
+        db_session, user_client, "reviewer-admin@aikyra.dev", inst["id"], role="institution_admin"
     )
-    owner = user_client("reviewer-owner@aikyra.dev")
-    _start_review(owner, proposal)
-    response = owner.post(
+    admin = user_client("reviewer-admin@aikyra.dev")
+    _start_review(admin, proposal)
+    response = admin.post(
         f"/api/proposals/{proposal['id']}/review",
         json={"action": "accept", "review_note": "Approved by the institution."},
     )
@@ -327,11 +327,11 @@ def test_reject_proposal_with_note_success(auth_client, user_client, db_session)
     """reject moves under_review -> rejected and persists the review note."""
     inst, ch, team, proposal = _submitted_proposal(auth_client)
     _register_institution_member(
-        db_session, user_client, "reviewer-owner@aikyra.dev", inst["id"], role="owner"
+        db_session, user_client, "reviewer-admin@aikyra.dev", inst["id"], role="institution_admin"
     )
-    owner = user_client("reviewer-owner@aikyra.dev")
-    _start_review(owner, proposal)
-    response = owner.post(
+    admin = user_client("reviewer-admin@aikyra.dev")
+    _start_review(admin, proposal)
+    response = admin.post(
         f"/api/proposals/{proposal['id']}/review",
         json={
             "action": "reject",
@@ -342,7 +342,7 @@ def test_reject_proposal_with_note_success(auth_client, user_client, db_session)
     body = response.json()
     assert body["status"] == "rejected"
     assert body["reviewed_at"] is not None
-    assert body["reviewed_by"] == str(_user_id(db_session, "reviewer-owner@aikyra.dev"))
+    assert body["reviewed_by"] == str(_user_id(db_session, "reviewer-admin@aikyra.dev"))
     assert body["review_note"] == "Missing impact metrics and budget breakdown."
 
 
@@ -350,11 +350,11 @@ def test_reject_with_blank_note_stored_as_none(auth_client, user_client, db_sess
     """A whitespace-only review note is stored as null."""
     inst, ch, team, proposal = _submitted_proposal(auth_client)
     _register_institution_member(
-        db_session, user_client, "reviewer-owner@aikyra.dev", inst["id"], role="owner"
+        db_session, user_client, "reviewer-admin@aikyra.dev", inst["id"], role="institution_admin"
     )
-    owner = user_client("reviewer-owner@aikyra.dev")
-    _start_review(owner, proposal)
-    response = owner.post(
+    admin = user_client("reviewer-admin@aikyra.dev")
+    _start_review(admin, proposal)
+    response = admin.post(
         f"/api/proposals/{proposal['id']}/review",
         json={"action": "reject", "review_note": "   "},
     )
@@ -366,9 +366,9 @@ def test_start_review_does_not_persist_note(auth_client, user_client, db_session
     """review_note is only captured at the final decision, never at start."""
     inst, ch, team, proposal = _submitted_proposal(auth_client)
     _register_institution_member(
-        db_session, user_client, "reviewer-owner@aikyra.dev", inst["id"], role="owner"
+        db_session, user_client, "reviewer-admin@aikyra.dev", inst["id"], role="institution_admin"
     )
-    response = user_client("reviewer-owner@aikyra.dev").post(
+    response = user_client("reviewer-admin@aikyra.dev").post(
         f"/api/proposals/{proposal['id']}/review",
         json={"action": "start_review", "review_note": "Not a decision."},
     )

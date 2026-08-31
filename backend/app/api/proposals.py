@@ -63,7 +63,7 @@ def list_proposals(
     """List proposals visible to the authenticated user.
 
     A proposal is visible only to ACTIVE team members or ACTIVE institution
-    owners/representatives of the team's institution. team_id and status from
+    admins/representatives of the team's institution. team_id and status from
     the query string only narrow, never widen, discovery.
     """
     proposals, total = service.list_proposals(
@@ -88,7 +88,7 @@ def get_proposal(
     """Get a proposal by id.
 
     The caller must be an ACTIVE team member or an ACTIVE institution
-    owner/representative of the team's institution.
+    admin/representative of the team's institution.
     """
     proposal = service.get_proposal(proposal_id, user_id=current_user.id)
     return ProposalResponse.model_validate(proposal)
@@ -161,8 +161,9 @@ def review_proposal(
       - accept:       under_review -> accepted
       - reject:       under_review -> rejected
 
-    Only an ACTIVE owner or representative of the proposal's team institution
-    may review (authorization resolved from the database at request time).
+    Only an ACTIVE institution_admin or representative of the proposal's team
+    institution may review (authorization resolved from the database at request
+    time).
     status, reviewed_at and reviewed_by are always server-controlled —
     reviewed_at/reviewed_by are set from the authenticated reviewer at the
     final decision.

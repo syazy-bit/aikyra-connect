@@ -1,8 +1,8 @@
 """Development-only Phase 4C seed — demo users and ADTU memberships.
 
-Creates platform reviewer and owner demo accounts with active memberships
-for Assam Down Town University so the authentication, membership, and
-verification workflow can be manually tested locally.
+Creates platform reviewer and institution-admin demo accounts with active
+memberships for Assam Down Town University so the authentication, membership,
+and verification workflow can be manually tested locally.
 
 Usage (from backend/):
     .venv\\Scripts\\python.exe -m scripts.seed_phase4c
@@ -32,17 +32,17 @@ DEMO_USERS = [
         "is_platform_reviewer": True,
     },
     {
-        "email": "owner@adtu.dev",
-        "password": "owner123",
-        "full_name": "ADTU Demo Owner",
+        "email": "admin@adtu.dev",
+        "password": "admin123",
+        "full_name": "ADTU Demo Admin",
         "is_platform_reviewer": False,
     },
 ]
 
 DEMO_MEMBERSHIPS = [
     {
-        "email": "owner@adtu.dev",
-        "role": InstitutionMembershipRole.OWNER,
+        "email": "admin@adtu.dev",
+        "role": InstitutionMembershipRole.INSTITUTION_ADMIN,
     },
     # Note: reviewer@aikyra.dev is a PLATFORM reviewer, not an institution member.
     # Platform reviewers verify institutions across the platform without

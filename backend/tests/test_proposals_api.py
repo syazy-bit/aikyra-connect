@@ -2,7 +2,7 @@
 
 Covers: draft creation (team-member only, team->challenge invariant, duplicate
 (team, challenge) rejection, mass-assignment protection), list/detail scoping
-(active team member or institution owner/representative only; students and
+(active team member or institution admin/representative only; students and
 platform reviewers excluded), draft editing (draft-only state machine),
 submission (lead-only, draft->submitted, submitted_at set server-side),
 withdrawal (lead-only, terminal state), IDOR, cross-team/cross-institution
@@ -122,7 +122,8 @@ def _user_id(db_session, email):
 
 
 def _team_context(auth_client):
-    """Create institution + challenge + team under the auth_client owner/lead."""
+    """Create institution + challenge + team under the auth_client
+    admin/lead."""
     inst = _create_institution(auth_client)
     ch = _create_challenge(auth_client)
     team = _create_team(auth_client, inst["id"], ch["id"])
@@ -329,17 +330,17 @@ def test_list_proposals_team_member_sees_own_team(
     assert body["items"][0]["status"] == "draft"
 
 
-def test_list_proposals_institution_owner_can_view(
+def test_list_proposals_institution_admin_can_view(
     auth_client, user_client, db_session
 ):
-    """An ACTIVE institution owner (not a team member) can view proposals."""
+    """An ACTIVE institution admin (not a team member) can view proposals."""
     inst, ch, team = _team_context(auth_client)
     _create_proposal(auth_client, team["id"], ch["id"])
     _register_institution_member(
-        db_session, user_client, "owner@aikyra.dev", inst["id"], role="owner"
+        db_session, user_client, "admin@aikyra.dev", inst["id"], role="institution_admin"
     )
-    owner = user_client("owner@aikyra.dev")
-    response = owner.get(f"/api/proposals?team_id={team['id']}")
+    admin = user_client("admin@aikyra.dev")
+    response = admin.get(f"/api/proposals?team_id={team['id']}")
     assert response.status_code == 200
     assert response.json()["total"] == 1
 
@@ -445,22 +446,23 @@ def test_get_proposal_team_member(auth_client, user_client, db_session):
     assert response.json()["title"] == "CP3 Test Proposal"
 
 
-def test_get_proposal_owner_viewable_student_forbidden(
+def test_get_proposal_admin_viewable_student_forbidden(
     auth_client, user_client, db_session
 ):
-    """Owner can view a proposal; a student at the same institution cannot."""
+    """Institution admin can view a proposal; a student at the same institution
+    cannot."""
     inst, ch, team = _team_context(auth_client)
     proposal = _create_proposal(auth_client, team["id"], ch["id"])
     _register_institution_member(
-        db_session, user_client, "owner@aikyra.dev", inst["id"], role="owner"
+        db_session, user_client, "admin@aikyra.dev", inst["id"], role="institution_admin"
     )
     _register_institution_member(
         db_session, user_client, "student@aikyra.dev", inst["id"], role="student"
     )
-    owner_response = user_client("owner@aikyra.dev").get(
+    admin_response = user_client("admin@aikyra.dev").get(
         f"/api/proposals/{proposal['id']}"
     )
-    assert owner_response.status_code == 200
+    assert admin_response.status_code == 200
     student_response = user_client("student@aikyra.dev").get(
         f"/api/proposals/{proposal['id']}"
     )
@@ -484,13 +486,14 @@ def test_get_proposal_other_team_member_forbidden(
     assert response.status_code == 403
 
 
-def test_get_proposal_other_institution_owner_forbidden(
+def test_get_proposal_other_institution_admin_forbidden(
     auth_client, user_client, db_session
 ):
-    """An owner of a DIFFERENT institution cannot view this proposal (403)."""
+    """An institution admin of a DIFFERENT institution cannot view this proposal
+    (403)."""
     inst, ch, team = _team_context(auth_client)
     proposal = _create_proposal(auth_client, team["id"], ch["id"])
-    other = user_client("other-owner@aikyra.dev")
+    other = user_client("other-admin@aikyra.dev")
     _create_institution(other, name="Other Inst")
     response = other.get(f"/api/proposals/{proposal['id']}")
     assert response.status_code == 403
@@ -659,16 +662,16 @@ def test_submit_proposal_non_lead_member_forbidden(
     assert response.status_code == 403
 
 
-def test_submit_proposal_institution_owner_not_member_forbidden(
+def test_submit_proposal_institution_admin_not_member_forbidden(
     auth_client, user_client, db_session
 ):
-    """An institution owner who is not a team member cannot submit (403)."""
+    """An institution admin who is not a team member cannot submit (403)."""
     inst, ch, team = _team_context(auth_client)
     proposal = _create_proposal(auth_client, team["id"], ch["id"])
     _register_institution_member(
-        db_session, user_client, "owner@aikyra.dev", inst["id"], role="owner"
+        db_session, user_client, "admin@aikyra.dev", inst["id"], role="institution_admin"
     )
-    response = user_client("owner@aikyra.dev").post(
+    response = user_client("admin@aikyra.dev").post(
         f"/api/proposals/{proposal['id']}/submit"
     )
     assert response.status_code == 403

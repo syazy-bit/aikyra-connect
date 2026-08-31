@@ -87,7 +87,7 @@ def _user_id(db_session, email):
 
 
 def _team_context(auth_client):
-    """Create institution + challenge + team under the auth_client owner/lead."""
+    """Create institution + challenge + team under the auth_client admin/lead."""
     inst = _create_institution(auth_client)
     ch = _create_challenge(auth_client)
     team = _create_team(auth_client, inst["id"], ch["id"])
@@ -227,14 +227,14 @@ def test_invitee_without_institution_membership_forbidden(
     assert response.status_code == 403
 
 
-def test_invitee_owner_role_forbidden(auth_client, user_client, db_session):
-    """An owner (institution role) at the team's institution is not a valid
-    invitee target (403)."""
+def test_invitee_admin_role_forbidden(auth_client, user_client, db_session):
+    """An institution_admin (institution role) at the team's institution is not
+    a valid invitee target (403)."""
     inst, ch, team = _team_context(auth_client)
-    owner = user_client("owner2@aikyra.dev")
-    owner_uid = _user_id(db_session, "owner2@aikyra.dev")
-    _create_membership(db_session, owner_uid, uuid.UUID(inst["id"]), "owner")
-    response = _invite(auth_client, team["id"], owner_uid)
+    admin = user_client("admin2@aikyra.dev")
+    admin_uid = _user_id(db_session, "admin2@aikyra.dev")
+    _create_membership(db_session, admin_uid, uuid.UUID(inst["id"]), "institution_admin")
+    response = _invite(auth_client, team["id"], admin_uid)
     assert response.status_code == 403
 
 

@@ -1,7 +1,7 @@
 """Phase 7 Checkpoint 6 — Project lifecycle (prototype -> pilot -> implemented).
 
 Covers: the lifecycle authorization matrix (only the project team's ACTIVE
-lead may advance — team members, unrelated users, institution owners who are
+lead may advance — team members, unrelated users, institution admins who are
 not on the team, and platform reviewers all get 403; anonymous gets 401),
 valid and invalid transitions (409 for every non-forward move), 404 for
 unknown projects, strict request validation (extra="forbid", malformed status
@@ -140,10 +140,10 @@ def _project_with_member(db_session, auth_client, user_client):
     member_uid = _register_user(db_session, user_client, "member@aikyra.dev")
     _add_team_member(db_session, team["id"], member_uid)
 
-    _register_user(db_session, user_client, "owner@aikyra.dev")
-    inst_owner_uid = _user_id(db_session, "owner@aikyra.dev")
+    _register_user(db_session, user_client, "admin@aikyra.dev")
+    inst_admin_uid = _user_id(db_session, "admin@aikyra.dev")
     _create_membership(
-        db_session, inst_owner_uid, uuid.UUID(inst["id"]), "owner", "active"
+        db_session, inst_admin_uid, uuid.UUID(inst["id"]), "institution_admin", "active"
     )
 
     project = auth_client.get("/api/projects").json()["items"][0]
@@ -207,12 +207,12 @@ def test_unrelated_user_cannot_advance(db_session, auth_client, user_client):
     assert resp.status_code == 403
 
 
-def test_institution_owner_who_is_not_lead_cannot_advance(
+def test_institution_admin_who_is_not_lead_cannot_advance(
     db_session, auth_client, user_client
 ):
     project, _, _ = _project_with_member(db_session, auth_client, user_client)
-    owner = user_client("owner@aikyra.dev")
-    resp = _patch_lifecycle(owner, project["id"], "pilot")
+    admin = user_client("admin@aikyra.dev")
+    resp = _patch_lifecycle(admin, project["id"], "pilot")
     assert resp.status_code == 403
 
 

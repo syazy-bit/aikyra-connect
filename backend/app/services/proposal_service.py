@@ -22,9 +22,9 @@ class ProposalService:
     commits successful operations and rolls back on failure.
 
     Authorization is database-backed — team membership and institution
-    membership (owner/representative) are resolved from the database at
-    request time. Client-supplied role, status, ownership and membership
-    data is never trusted.
+    membership (institution_admin/representative) are resolved from the
+    database at request time. Client-supplied role, status, ownership and
+    membership data is never trusted.
     """
 
     def __init__(self, db: Session) -> None:
@@ -47,19 +47,19 @@ class ProposalService:
 
     def _can_view(self, team: Team, user_id: UUID) -> bool:
         """Viewing is limited to active team members or active institution
-        owners/representatives of the team's institution."""
+        admins/representatives of the team's institution."""
         if self._get_active_membership(team.id, user_id) is not None:
             return True
         return self.institution_membership_repository.has_role(
-            user_id, team.institution_id, ("owner", "representative")
+            user_id, team.institution_id, ("institution_admin", "representative")
         )
 
     def _can_review(self, team: Team, reviewer_user_id: UUID) -> bool:
-        """A reviewer must be an ACTIVE owner or representative of the
-        institution the proposal's team belongs to. Platform reviewers,
+        """A reviewer must be an ACTIVE institution_admin or representative of
+        the institution the proposal's team belongs to. Platform reviewers,
         students and ordinary team members never qualify."""
         return self.institution_membership_repository.has_role(
-            reviewer_user_id, team.institution_id, ("owner", "representative")
+            reviewer_user_id, team.institution_id, ("institution_admin", "representative")
         )
 
     def _require_reviewer(
@@ -244,8 +244,8 @@ class ProposalService:
         return proposal
 
     # --- Review: submitted -> under_review -> accepted|rejected (CP4) --------
-    # The review workflow is institution-owned: only an ACTIVE owner or
-    # representative of the proposal's team institution may advance the state
+    # The review workflow is institution-owned: only an ACTIVE institution_admin
+    # or representative of the proposal's team institution may advance the state
     # machine. rejected/accepted are terminal — there is no resubmission,
     # appeal or second-round review. reviewed_at and reviewed_by are set
     # server-side from the authenticated reviewer at the final decision.

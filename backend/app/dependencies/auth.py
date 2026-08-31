@@ -3,7 +3,7 @@
 Authorization is resolved from the database — never from JWT claims,
 client-supplied role, or client-supplied user_id.
 
-Institution-scoped roles (owner, representative, faculty, student) are
+Institution-scoped roles (institution_admin, representative, faculty, student) are
 resolved from institution_memberships.
 
 Platform-level roles (platform reviewer) are resolved from the users table.
@@ -23,7 +23,7 @@ from app.repositories.membership_repository import MembershipRepository
 from app.repositories.team_repository import TeamMembershipRepository, TeamRepository
 from app.services.auth_service import AuthService
 
-_TEAM_VIEWER_INSTITUTION_ROLES = ("owner", "representative")
+_TEAM_VIEWER_INSTITUTION_ROLES = ("institution_admin", "representative")
 
 
 def _extract_bearer_token(authorization: str | None = Header(default=None)) -> str:
@@ -51,13 +51,13 @@ def get_current_user(
     return service.resolve_current_user(token)
 
 
-def require_owner_or_rep(
+def require_institution_admin_or_rep(
     institution_id: UUID = Path(),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> User:
-    """Authorization dependency: requires an ACTIVE owner or representative
-    membership for the given institution.
+    """Authorization dependency: requires an ACTIVE institution_admin or
+    representative membership for the given institution.
 
     Resolves membership from the database — never trusts JWT claims or
     client-supplied role.
@@ -72,7 +72,7 @@ def require_owner_or_rep(
     has_access = membership_repo.has_role(
         current_user.id,
         institution_id,
-        ("owner", "representative"),
+        ("institution_admin", "representative"),
     )
     if not has_access:
         raise ForbiddenError(
@@ -132,7 +132,7 @@ def require_team_viewer(
 
     A user may view a team if either:
       - they have an ACTIVE team membership, or
-      - they are an ACTIVE owner/representative of the team's institution.
+      - they are an ACTIVE institution_admin/representative of the team's institution.
 
     The team's institution is resolved from the database via team_id — it is
     never trusted from client input. Cross-institution access is impossible

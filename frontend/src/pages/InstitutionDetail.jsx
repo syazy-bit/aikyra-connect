@@ -54,7 +54,7 @@ export function InstitutionDetail() {
   };
 
   const canEdit = membership?.is_member === true &&
-    (membership?.role === "owner" || membership?.role === "representative") &&
+    (membership?.role === "institution_admin" || membership?.role === "representative") &&
     membership?.membership_status === "active";
 
   if (loading) {
@@ -217,7 +217,7 @@ export function InstitutionDetail() {
           </section>
         )}
 
-        {/* Edit CTA - only shown for active owner/representative */}
+        {/* Edit CTA - only shown for active institution_admin/representative */}
         {canEdit && (
           <div style={{ marginTop: "var(--space-6)", display: "flex", gap: "var(--space-3)" }}>
             <Link

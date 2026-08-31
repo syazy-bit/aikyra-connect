@@ -114,7 +114,7 @@ export function RegisterInstitution() {
       .then((mem) => {
         if (cancelled) return;
         const allowed = mem?.is_member === true &&
-          (mem?.role === "owner" || mem?.role === "representative") &&
+          (mem?.role === "institution_admin" || mem?.role === "representative") &&
           mem?.membership_status === "active";
         setCanEditInstitution(allowed);
         setMembershipChecked(true);

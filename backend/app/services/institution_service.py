@@ -108,7 +108,7 @@ class InstitutionService:
     # --- Registration ---------------------------------------------------
 
     def create_institution(
-        self, payload: InstitutionCreate, owner_user_id: UUID
+        self, payload: InstitutionCreate, institution_admin_user_id: UUID
     ) -> Institution:
         self._ensure_name_available(payload.name)
         self._ensure_website_host_available(payload.website)
@@ -125,9 +125,9 @@ class InstitutionService:
             )
             self.membership_repository.create(
                 {
-                    "user_id": owner_user_id,
+                    "user_id": institution_admin_user_id,
                     "institution_id": institution.id,
-                    "role": InstitutionMembershipRole.OWNER,
+                    "role": InstitutionMembershipRole.INSTITUTION_ADMIN,
                     "status": InstitutionMembershipStatus.ACTIVE,
                 }
             )
@@ -248,7 +248,7 @@ class InstitutionService:
         self,
         institution_id: UUID,
     ) -> Institution:
-        """Owner/representative resubmits a rejected institution for review."""
+        """Institution admin/representative resubmits a rejected institution for review."""
         institution = self.get_institution(institution_id)
         self._assert_valid_transition(institution, VerificationAction.RESUBMIT)
         updated = self.repository.update(
@@ -268,7 +268,7 @@ class InstitutionService:
         self,
         institution_id: UUID,
     ) -> Institution:
-        """Owner/representative submits an unverified institution for review."""
+        """Institution admin/representative submits an unverified institution for review."""
         institution = self.get_institution(institution_id)
         self._assert_valid_transition(institution, VerificationAction.SUBMIT_FOR_REVIEW)
         updated = self.repository.update(

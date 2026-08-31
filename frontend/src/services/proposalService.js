@@ -22,7 +22,7 @@ function buildQuery(params) {
 
 /**
  * List proposals visible to the authenticated user (active team member,
- * or owner/representative of the team's institution).
+ * or institution_admin/representative of the team's institution).
  * @param {Object} [params]
  * @param {string} [params.teamId]  Narrow to a single team
  * @param {string} [params.status]  ProposalStatus value ("draft"|"submitted"|...)
@@ -94,7 +94,7 @@ export async function withdrawProposal(id) {
 }
 
 /**
- * Advance the proposal review workflow (CP4). Institution owner or
+ * Advance the proposal review workflow (CP4). Institution admin or
  * representative of the proposal's team institution only.
  * @param {string} id
  * @param {{action: "start_review"|"accept"|"reject", review_note?: string}} payload

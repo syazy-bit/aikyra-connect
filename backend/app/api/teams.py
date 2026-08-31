@@ -45,7 +45,7 @@ def create_team(
     """Create a team for a challenge.
 
     Requires an ACTIVE institution membership with a role that permits
-    team creation (owner, representative, faculty, or student).
+    team creation (institution_admin, representative, faculty, or student).
     The authenticated user automatically becomes the team lead.
     """
     team = service.create_team(
@@ -109,8 +109,8 @@ def get_team(
 ) -> TeamResponse:
     """Get team details.
 
-    Requires an ACTIVE team membership, or being an owner/representative
-    of the team's institution.
+    Requires an ACTIVE team membership, or being an
+    institution_admin/representative of the team's institution.
     """
     team = service.get_team(team_id)
     return TeamResponse.model_validate(team)

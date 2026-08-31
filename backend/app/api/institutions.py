@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.exceptions import ForbiddenError, NotFoundError
-from app.dependencies.auth import get_current_user, require_owner_or_rep
+from app.dependencies.auth import get_current_user, require_institution_admin_or_rep
 from app.models.user import User
 from app.repositories.institution_repository import InstitutionRepository
 from app.repositories.membership_repository import MembershipRepository
@@ -40,12 +40,12 @@ def register_institution(
 ) -> InstitutionResponse:
     """Register an institution.
 
-    Requires authentication. The authenticated user becomes the owner.
-    Every registration starts `active` + `unverified` (human-entered data).
-    Verification is performed by platform reviewers.
+    Requires authentication. The authenticated user becomes the institution's
+    first institution_admin. Every registration starts `active` + `unverified`
+    (human-entered data). Verification is performed by platform reviewers.
     """
     return service.to_response(
-        service.create_institution(payload, owner_user_id=current_user.id)
+        service.create_institution(payload, institution_admin_user_id=current_user.id)
     )
 
 
@@ -89,13 +89,13 @@ def get_membership(
 def update_institution(
     institution_id: UUID,
     payload: InstitutionUpdate,
-    current_user: User = Depends(require_owner_or_rep),
+    current_user: User = Depends(require_institution_admin_or_rep),
     service: InstitutionService = Depends(get_institution_service),
 ) -> InstitutionResponse:
     """Partial profile/capability update (replace-whole semantics for the
     capabilities object).
 
-    Requires authentication plus an active owner or representative
+    Requires authentication plus an active institution_admin or representative
     membership for the institution. Verification/lifecycle fields are
     intentionally excluded from this payload.
     """
@@ -109,7 +109,7 @@ _REVIEWER_ACTIONS = {
     VerificationAction.REINSTATE,
 }
 
-_OWNER_ACTIONS = {
+_INSTITUTION_ADMIN_ACTIONS = {
     VerificationAction.SUBMIT_FOR_REVIEW,
     VerificationAction.RESUBMIT,
 }
@@ -130,7 +130,7 @@ def update_verification(
     Enforces a server-side state machine. Authorization is resolved from
     the database-backed membership system.
 
-    Owner/representative actions: submit_for_review, resubmit.
+    Institution admin/representative actions: submit_for_review, resubmit.
     Platform reviewer actions: verify, reject, suspend, reinstate.
     """
     membership_repo = MembershipRepository(service.db)
@@ -145,9 +145,9 @@ def update_verification(
             raise ForbiddenError(
                 "You do not have platform reviewer permissions."
             )
-    elif payload.action in _OWNER_ACTIONS:
+    elif payload.action in _INSTITUTION_ADMIN_ACTIONS:
         if not membership_repo.has_role(
-            current_user.id, institution_id, ("owner", "representative")
+            current_user.id, institution_id, ("institution_admin", "representative")
         ):
             raise ForbiddenError(
                 "You do not have permission to modify this institution."

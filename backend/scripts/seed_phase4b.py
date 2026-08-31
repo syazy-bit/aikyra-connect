@@ -192,17 +192,17 @@ DEMO_USERS = [
         "is_platform_reviewer": True,
     },
     {
-        "email": "owner@adtu.dev",
-        "password": "owner123",
-        "full_name": "ADTU Demo Owner",
+        "email": "admin@adtu.dev",
+        "password": "admin123",
+        "full_name": "ADTU Demo Admin",
         "is_platform_reviewer": False,
     },
 ]
 
 DEMO_MEMBERSHIPS = [
     {
-        "email": "owner@adtu.dev",
-        "role": InstitutionMembershipRole.OWNER,
+        "email": "admin@adtu.dev",
+        "role": InstitutionMembershipRole.INSTITUTION_ADMIN,
     },
     # Note: reviewer@aikyra.dev is a PLATFORM reviewer, not an institution member.
     # Platform reviewers verify institutions across the platform without
