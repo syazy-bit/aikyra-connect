@@ -11,6 +11,7 @@ import { ChallengeDetail } from "./pages/ChallengeDetail.jsx";
 import { Institutions } from "./pages/Institutions.jsx";
 import { InstitutionDetail } from "./pages/InstitutionDetail.jsx";
 import { RegisterInstitution } from "./pages/RegisterInstitution.jsx";
+import { InstitutionAdminOnboarding } from "./pages/InstitutionAdminOnboarding.jsx";
 import { Login } from "./pages/Login.jsx";
 import { Register } from "./pages/Register.jsx";
 import { Workspace } from "./pages/Workspace.jsx";
@@ -50,6 +51,8 @@ function AppContent() {
             <RegisterInstitution />
           </ProtectedRoute>
         );
+      case "institution-admin-onboarding":
+        return <InstitutionAdminOnboarding />;
       case "workspace":
         return (
           <ProtectedRoute>

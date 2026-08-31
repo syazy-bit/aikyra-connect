@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useRouter } from "../context/RouterContext.jsx";
+import { useAuth } from "../context/AuthContext.jsx";
 import { getTaxonomy } from "../services/challengeService.js";
 import { listInstitutions } from "../services/institutionService.js";
 import { InstitutionCard, INSTITUTION_TYPE_LABELS } from "../components/InstitutionCard.jsx";
@@ -26,6 +27,7 @@ function parseQuery(query) {
 
 export function Institutions() {
   const { route, navigate } = useRouter();
+  const { isAuthenticated } = useAuth();
   const selected = useMemo(() => parseQuery(route.query), [route.query]);
 
   const [taxonomy, setTaxonomy] = useState(null);
@@ -108,15 +110,17 @@ export function Institutions() {
               profiles are self-declared by each institution.
             </p>
           </div>
-          <div>
-            <Link href="/institutions/register" className="btn btn-primary">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-              Register Institution
-            </Link>
-          </div>
+          {!isAuthenticated && (
+            <div>
+              <Link href="/register-institution" className="btn btn-primary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                Register Institution
+              </Link>
+            </div>
+          )}
         </div>
 
         {/* Toolbar */}
@@ -210,8 +214,8 @@ export function Institutions() {
                 ? "Try removing some filters or using a broader search term."
                 : "Is your university, research institute or innovation hub working on societal problems? Join the Aikyra network."
             }
-            actionText={hasActiveFilters ? "Clear all filters" : "Register Your Institution"}
-            actionHref={hasActiveFilters ? undefined : "/institutions/register"}
+            actionText={!isAuthenticated && !hasActiveFilters ? "Register Your Institution" : hasActiveFilters ? "Clear all filters" : undefined}
+            actionHref={!isAuthenticated && !hasActiveFilters ? "/register-institution" : hasActiveFilters ? undefined : undefined}
             onActionClick={hasActiveFilters ? clearAllFilters : undefined}
           />
         )}

@@ -7,7 +7,7 @@ who manages an institution), not a platform user role; the clearer name is
 
 Uses the safe type-replacement strategy (same as j2k3l4m5n6o7):
 1. Create a new enum type with the desired values
-2. Migrate the column to the new type, remapping existing 'owner' rows
+2. Alter the column to the new type with a USING clause that maps owner -> institution_admin
 3. Drop the old enum type
 4. Rename the new enum to the original name
 
@@ -33,20 +33,20 @@ def upgrade() -> None:
         "CREATE TYPE institution_membership_role_new AS ENUM "
         "('institution_admin', 'representative', 'faculty', 'student')"
     )
-    # Step 2: Remap existing 'owner' memberships to 'institution_admin' in place.
-    op.execute(
-        "UPDATE institution_memberships SET role = 'institution_admin' "
-        "WHERE role = 'owner'"
-    )
-    # Step 3: Alter the column to use the new enum type.
+    # Step 2: Alter the column to use the new enum type, mapping 'owner' -> 'institution_admin'
+    # The USING clause maps the text representation of the old enum to the new enum,
+    # converting 'owner' to 'institution_admin' while preserving other values.
     op.execute(
         "ALTER TABLE institution_memberships ALTER COLUMN role "
         "TYPE institution_membership_role_new "
-        "USING role::text::institution_membership_role_new"
+        "USING CASE "
+        "  WHEN role::text = 'owner' THEN 'institution_admin'::text "
+        "  ELSE role::text "
+        "END::institution_membership_role_new"
     )
-    # Step 4: Drop the old enum type.
+    # Step 3: Drop the old enum type.
     op.execute("DROP TYPE institution_membership_role")
-    # Step 5: Rename the replacement to the original name.
+    # Step 4: Rename the replacement to the original name.
     op.execute(
         "ALTER TYPE institution_membership_role_new "
         "RENAME TO institution_membership_role"
@@ -60,14 +60,14 @@ def downgrade() -> None:
         "('owner', 'representative', 'faculty', 'student')"
     )
     # Convert any institution_admin rows back to owner before downgrading.
-    op.execute(
-        "UPDATE institution_memberships SET role = 'owner' "
-        "WHERE role = 'institution_admin'"
-    )
+    # Use USING clause to map institution_admin -> owner
     op.execute(
         "ALTER TABLE institution_memberships ALTER COLUMN role "
         "TYPE institution_membership_role_old "
-        "USING role::text::institution_membership_role_old"
+        "USING CASE "
+        "  WHEN role::text = 'institution_admin' THEN 'owner'::text "
+        "  ELSE role::text "
+        "END::institution_membership_role_old"
     )
     op.execute("DROP TYPE institution_membership_role")
     op.execute(

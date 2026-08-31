@@ -72,6 +72,7 @@ export function RouterProvider({ children }) {
 
     if (path === "/institutions") return { name: "institutions", params: {}, query: params };
     if (path === "/institutions/register") return { name: "institution-register", params: {}, query: {} };
+    if (path === "/register-institution") return { name: "institution-admin-onboarding", params: {}, query: {} };
 
     const institutionDetailMatch = path.match(/^\/institutions\/([^/]+)$/);
     if (institutionDetailMatch) {
