@@ -1,0 +1,12 @@
+[build]
+# Nixpacks auto-detects Python and installs from backend/requirements.txt.
+builder = "nixpacks"
+
+[deploy]
+# 1. Apply Alembic migrations on a fresh database, THEN
+# 2. start FastAPI bound to Railway's dynamic $PORT (0.0.0.0).
+# Railway sets PORT at runtime and rejects the conventional 8000.
+startCommand = "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+
+[deploy.healthcheck]
+path = "/health"

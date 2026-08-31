@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.config import get_settings
 from app.core.exceptions import NotFoundError
 from app.dependencies.auth import get_current_user
 from app.models.user import User
@@ -343,6 +344,10 @@ def create_demo_contribution(
     and determined server-side. A project with no goal, or a CLOSED goal, is
     rejected. The response is the existing server-derived public summary.
     """
+    # Available only when DEMO_MODE=true (hackathon). Absent/false -> 404 so
+    # the endpoint behaves as unavailable in normal deployments.
+    if not get_settings().demo_mode:
+        raise NotFoundError("Project", project_id)
     return FundingSummary.model_validate(
         service.create_demo_contribution(
             project_id=project_id,

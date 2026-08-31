@@ -13,6 +13,10 @@ BACKEND_DIR = Path(__file__).resolve().parents[1]
 load_dotenv(BACKEND_DIR.parent / ".env")
 load_dotenv(BACKEND_DIR / ".env")
 
+# Enable DEMO_MODE in the test environment so the demo funding contribution
+# endpoint (gated behind DEMO_MODE=true) remains covered by test_demo_funding_api.py.
+os.environ.setdefault("DEMO_MODE", "true")
+
 from app.core.database import Base, get_db  # noqa: E402
 import app.models.challenge  # noqa: F401,E402  # register models on Base.metadata
 import app.models.institution  # noqa: F401,E402

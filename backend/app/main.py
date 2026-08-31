@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Request, status
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api.auth import router as auth_router
@@ -13,6 +14,7 @@ from app.api.projects import router as projects_router
 from app.api.related import router as related_router
 from app.api.taxonomy import router as taxonomy_router
 from app.api.teams import router as teams_router
+from app.core.config import get_settings
 from app.core.exceptions import (
     ConflictError,
     ForbiddenError,
@@ -20,10 +22,33 @@ from app.core.exceptions import (
     NotAuthenticatedError,
 )
 
+_settings = get_settings()
+
+# CORS: the deployed Vercel frontend talks to this Railway backend, so its
+# origin must be allowed. FRONTEND_URL is injected from the environment in
+# production. Local development origins are always kept so the running Vite
+# dev server can reach the API. Credentials are enabled only alongside an
+# explicit origin list (never `"*"`), keeping the existing Bearer-token auth
+# flow intact.
+_allowed_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+if _settings.frontend_url:
+    _allowed_origins.insert(0, _settings.frontend_url)
+
 app = FastAPI(
     title="Aikyra API",
     description="Collaborative societal innovation platform — REST API",
     version="0.3.0",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
