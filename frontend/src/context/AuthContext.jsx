@@ -13,13 +13,13 @@ export function AuthProvider({ children }) {
   const [error, setError] = useState(null);
 
   const clearAuth = useCallback(() => {
-    localStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(TOKEN_KEY);
     setUser(null);
     setError(null);
   }, []);
 
   const setAuth = useCallback((token, userData) => {
-    localStorage.setItem(TOKEN_KEY, token);
+    sessionStorage.setItem(TOKEN_KEY, token);
     setUser(userData);
     setError(null);
   }, []);
@@ -34,7 +34,7 @@ export function AuthProvider({ children }) {
         body: JSON.stringify({ email, password }),
       });
       const token = data.access_token;
-      localStorage.setItem(TOKEN_KEY, token);
+      sessionStorage.setItem(TOKEN_KEY, token);
       const me = await apiRequest("/api/auth/me");
       setAuth(token, me);
       return { success: true };
@@ -57,7 +57,7 @@ export function AuthProvider({ children }) {
         body: JSON.stringify({ email, password }),
       });
       const token = data.access_token;
-      localStorage.setItem(TOKEN_KEY, token);
+      sessionStorage.setItem(TOKEN_KEY, token);
       const me = await apiRequest("/api/auth/me");
       setAuth(token, me);
       return { success: true };
@@ -73,7 +73,7 @@ export function AuthProvider({ children }) {
   }, [clearAuth]);
 
   const restoreSession = useCallback(async () => {
-    const token = localStorage.getItem(TOKEN_KEY);
+    const token = sessionStorage.getItem(TOKEN_KEY);
     if (!token) {
       setLoading(false);
       return;
@@ -83,7 +83,7 @@ export function AuthProvider({ children }) {
       setUser(me);
     } catch (err) {
       if (err.status === 401) {
-        localStorage.removeItem(TOKEN_KEY);
+        sessionStorage.removeItem(TOKEN_KEY);
       }
     } finally {
       setLoading(false);
