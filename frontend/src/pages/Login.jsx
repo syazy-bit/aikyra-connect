@@ -3,6 +3,7 @@ import { Link, useRouter } from "../context/RouterContext.jsx";
 import { useAuth, SESSION_EXPIRED_MESSAGE } from "../context/AuthContext.jsx";
 import { Alert } from "../components/Alert.jsx";
 import { LoadingSpinner } from "../components/LoadingSpinner.jsx";
+import { LoginPathSelection } from "../components/OnboardingPathSelection.jsx";
 
 /**
  * Only allow internal application paths for post-login redirects.
@@ -20,7 +21,7 @@ function EyeIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-      <circle cx="12" cy="12" r="3" />
+      <circle cx="12" cy="7" r="3" />
     </svg>
   );
 }
@@ -38,8 +39,9 @@ function EyeOffIcon() {
 
 export function Login() {
   const { route, navigate } = useRouter();
-  const { login, error: authError, clearError } = useAuth();
+  const { login, error: authError, clearError, user } = useAuth();
 
+  const [selectedPath, setSelectedPath] = useState(null); // "citizen" or "institution_admin"
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -85,22 +87,54 @@ export function Login() {
     setSubmitting(false);
 
     if (result.success) {
-      navigate(next);
+      // If user selected "Institution Admin" path, check for institution_admin membership
+      if (selectedPath === "institution_admin") {
+        // The user will be redirected to the default next page.
+        // If they have institution_admin membership, they can access admin areas.
+        // If not, they'll see appropriate messaging in those areas.
+        // For now, just navigate to the intended destination.
+        navigate(next);
+      } else {
+        navigate(next);
+      }
     } else {
       setServerError(result.error);
     }
   };
 
+  const handlePathSelect = (path) => {
+    setSelectedPath(path);
+    setErrors({});
+    setServerError(null);
+  };
+
+  // Show path selection if no path selected yet
+  if (!selectedPath) {
+    return (
+      <LoginPathSelection
+        onPathSelect={handlePathSelect}
+        showBackLink={true}
+      />
+    );
+  }
+
+  // Show login form after path selection
   return (
     <div className="auth-page">
       <div className="container-narrow">
         <div className="auth-card card">
           <div className="auth-header">
-            <Link href="/" className="back-link" style={{ marginBottom: "var(--space-6)" }}>
-              ← Back to Home
+            <Link href="/login" className="back-link" style={{ marginBottom: "var(--space-6)" }}>
+              ← Back
             </Link>
-            <h1 className="auth-title">Welcome Back</h1>
-            <p className="auth-subtitle">Sign in to your Aikyra account</p>
+            <h1 className="auth-title">
+              {selectedPath === "institution_admin" ? "Institution Admin Sign In" : "Welcome Back"}
+            </h1>
+            <p className="auth-subtitle">
+              {selectedPath === "institution_admin"
+                ? "Sign in to manage your institution"
+                : "Sign in to your Aikyra account"}
+            </p>
           </div>
 
           {sessionExpired && (
