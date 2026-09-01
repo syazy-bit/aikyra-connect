@@ -3,7 +3,11 @@ from uuid import UUID
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from app.models.institution import Institution
+from app.models.institution import (
+    Institution,
+    InstitutionVerificationStatus,
+    InstitutionType,
+)
 
 
 def _escape_like(value: str) -> str:
@@ -126,4 +130,29 @@ class InstitutionRepository:
         ).scalar_one()
         ordered = self._order_by(stmt, sort, ts_query)
         rows = self.db.execute(ordered.offset(skip).limit(limit)).scalars().all()
+        return list(rows), total
+
+    def list_institutions_admin(
+        self,
+        *,
+        verification_status: InstitutionVerificationStatus | None = None,
+        institution_type: InstitutionType | None = None,
+        skip: int = 0,
+        limit: int = 20,
+    ) -> tuple[list[Institution], int]:
+        """Admin listing with verification status and type filters."""
+        stmt = select(Institution)
+
+        if verification_status:
+            stmt = stmt.where(Institution.verification_status == verification_status)
+        if institution_type:
+            stmt = stmt.where(Institution.institution_type == institution_type)
+
+        stmt = stmt.order_by(Institution.created_at.desc())
+
+        total = self.db.execute(
+            select(func.count()).select_from(stmt.subquery())
+        ).scalar_one()
+
+        rows = self.db.execute(stmt.offset(skip).limit(limit)).scalars().all()
         return list(rows), total

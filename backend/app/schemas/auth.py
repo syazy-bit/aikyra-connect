@@ -77,4 +77,7 @@ class AuthMeResponse(BaseModel):
     email: str
     full_name: str | None
     is_active: bool
+    is_platform_reviewer: bool
+    can_review_problems: bool
+    can_review_institutions: bool
     created_at: datetime

@@ -5,7 +5,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 
 export function Navbar() {
   const { currentPath, navigate } = useRouter();
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, logout, hasAnyAdminCapability } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const toggleMobileMenu = () => setMobileMenuOpen((prev) => !prev);
@@ -91,6 +91,11 @@ export function Navbar() {
           {isAuthenticated && (
             <Link href="/workspace" className={`nav-link ${currentPath.startsWith("/workspace") ? "active" : ""}`} onClick={closeMobileMenu}>
               Workspace
+            </Link>
+          )}
+          {isAuthenticated && hasAnyAdminCapability && !currentPath.startsWith("/admin") && (
+            <Link href="/admin" className={`nav-link ${currentPath.startsWith("/admin") ? "active" : ""}`} onClick={closeMobileMenu}>
+              Admin
             </Link>
           )}
 

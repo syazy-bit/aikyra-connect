@@ -37,7 +37,7 @@ export function AuthProvider({ children }) {
       sessionStorage.setItem(TOKEN_KEY, token);
       const me = await apiRequest("/api/auth/me");
       setAuth(token, me);
-      return { success: true };
+      return { success: true, user: me };
     } catch (err) {
       const message = err.message || "Login failed. Please check your credentials.";
       setError(message);
@@ -107,6 +107,10 @@ export function AuthProvider({ children }) {
     register,
     logout,
     isAuthenticated: !!user,
+    canReviewProblems: user?.can_review_problems === true,
+    canReviewInstitutions: user?.can_review_institutions === true,
+    isPlatformReviewer: user?.is_platform_reviewer === true,
+    hasAnyAdminCapability: user?.can_review_problems === true || user?.can_review_institutions === true,
   };
 
   return (

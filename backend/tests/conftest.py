@@ -223,6 +223,8 @@ def reviewer_client(db_session: Session):
     reviewer_user = db_session.query(User).filter(User.email == "reviewer@aikyra.dev").first()
     if reviewer_user:
         reviewer_user.is_platform_reviewer = True
+        reviewer_user.can_review_problems = True
+        reviewer_user.can_review_institutions = True
         db_session.commit()
 
     yield c

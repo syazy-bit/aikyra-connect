@@ -9,3 +9,4 @@ import app.models.project_impact_metric  # noqa: F401
 import app.models.project_report  # noqa: F401
 import app.models.funding_goal  # noqa: F401
 import app.models.funding_contribution  # noqa: F401
+import app.models.challenge_review_audit  # noqa: F401

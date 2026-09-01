@@ -207,6 +207,16 @@ DEMO_USERS = [
         "password": "reviewer123",
         "full_name": "Demo Platform Reviewer",
         "is_platform_reviewer": True,
+        "can_review_problems": True,
+        "can_review_institutions": True,
+    },
+    {
+        "email": "admin@aikyra.dev",
+        "password": "admin123",
+        "full_name": "Aikyra Platform Admin",
+        "is_platform_reviewer": True,
+        "can_review_problems": True,
+        "can_review_institutions": True,
     },
     {
         "email": "admin@adtu.dev",
@@ -324,12 +334,18 @@ def main() -> None:
             )
 
         # --- 4. Demo users and memberships (Phase 4C) -----------------------
-        def _ensure_user(db, email: str, password: str, full_name: str, is_platform_reviewer: bool = False):
+        def _ensure_user(db, email: str, password: str, full_name: str, is_platform_reviewer: bool = False, can_review_problems: bool = False, can_review_institutions: bool = False):
             repo = UserRepository(db)
             user = repo.get_by_email(email)
             if user is not None:
                 if user.is_platform_reviewer != is_platform_reviewer:
                     user.is_platform_reviewer = is_platform_reviewer
+                    db.flush()
+                if user.can_review_problems != can_review_problems:
+                    user.can_review_problems = can_review_problems
+                    db.flush()
+                if user.can_review_institutions != can_review_institutions:
+                    user.can_review_institutions = can_review_institutions
                     db.flush()
                 return user, False
             user = repo.create(
@@ -338,6 +354,8 @@ def main() -> None:
                     "hashed_password": pwd_context.hash(password),
                     "full_name": full_name,
                     "is_platform_reviewer": is_platform_reviewer,
+                    "can_review_problems": can_review_problems,
+                    "can_review_institutions": can_review_institutions,
                 }
             )
             return user, True
@@ -362,7 +380,9 @@ def main() -> None:
         for spec in DEMO_USERS:
             user, created = _ensure_user(
                 db, spec["email"], spec["password"], spec["full_name"],
-                spec.get("is_platform_reviewer", False)
+                spec.get("is_platform_reviewer", False),
+                spec.get("can_review_problems", False),
+                spec.get("can_review_institutions", False),
             )
             user_map[spec["email"]] = user
             if created:

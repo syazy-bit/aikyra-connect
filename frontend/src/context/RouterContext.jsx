@@ -84,7 +84,23 @@ export function RouterProvider({ children }) {
     }
 
     if (path === "/projects") return { name: "projects", params: {}, query: params };
-    if (path === "/impact") return { name: "dashboard", params: {}, query: {} };
+    if (path === "/impact") return { name: "dashboard", params: {}, query: params };
+
+    // Admin routes
+    if (path === "/admin") return { name: "admin-overview", params: {}, query: {} };
+    if (path === "/admin/login") return { name: "admin-login", params: {}, query: params };
+    if (path === "/admin/problems") return { name: "admin-problems", params: {}, query: params };
+
+    const adminProblemDetailMatch = path.match(/^\/admin\/problems\/([^/]+)$/);
+    if (adminProblemDetailMatch) {
+      return {
+        name: "admin-problem-detail",
+        params: { id: adminProblemDetailMatch[1] },
+        query: params,
+      };
+    }
+
+    if (path === "/admin/institutions") return { name: "admin-institutions", params: {}, query: {} };
 
     // Must be checked before the shorter /funding and /funding/manage routes
     // so the deeper demo-payment path is never shadowed.

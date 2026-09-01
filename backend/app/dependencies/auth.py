@@ -7,6 +7,7 @@ Institution-scoped roles (institution_admin, representative, faculty, student) a
 resolved from institution_memberships.
 
 Platform-level roles (platform reviewer) are resolved from the users table.
+Platform-level capabilities (admin dashboard access) are resolved from user capability flags.
 """
 
 from typing import Annotated
@@ -96,6 +97,27 @@ def require_platform_reviewer(
             "You do not have platform reviewer permissions."
         )
     return current_user
+
+
+def require_admin_capability(capability: str):
+    """Authorization dependency factory: requires a specific admin capability.
+
+    Capabilities are boolean flags on the User model (e.g., can_review_problems,
+    can_review_institutions). This is a platform-level authorization check.
+
+    Raises ForbiddenError if the user lacks the required capability.
+    """
+    def dependency(current_user: User = Depends(get_current_user)) -> User:
+        if not getattr(current_user, capability, False):
+            raise ForbiddenError(
+                f"Requires {capability} capability."
+            )
+        return current_user
+    return dependency
+
+
+require_review_problems = require_admin_capability("can_review_problems")
+require_review_institutions = require_admin_capability("can_review_institutions")
 
 
 def require_team_member(
