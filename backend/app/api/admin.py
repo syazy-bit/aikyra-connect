@@ -150,7 +150,19 @@ def admin_list_institutions(
     return service.list_institutions_for_review(query)
 
 
-# The verification endpoint already exists at /api/institutions/{id}/verification
-# and is protected by require_platform_reviewer. It can be used by admins with
-# can_review_institutions capability as well if we want to allow both.
-# For now, we keep the existing endpoint unchanged for backward compatibility.
+from app.schemas.institution import InstitutionResponse
+from app.services.institution_service import InstitutionService
+
+
+def get_institution_service(db: Session = Depends(get_db)) -> InstitutionService:
+    return InstitutionService(db)
+
+
+@router.get("/institutions/{institution_id}", response_model=InstitutionResponse)
+def admin_get_institution(
+    institution_id: UUID,
+    service: InstitutionService = Depends(get_institution_service),
+    current_user: User = Depends(require_review_institutions),
+) -> InstitutionResponse:
+    """Get full institution detail for admin review."""
+    return service.to_response(service.get_institution(institution_id))

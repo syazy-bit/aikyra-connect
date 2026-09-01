@@ -29,6 +29,7 @@ import { AdminOverview } from "./pages/AdminOverview.jsx";
 import { ProblemReviewQueue } from "./pages/ProblemReviewQueue.jsx";
 import { ProblemReviewDetail } from "./pages/ProblemReviewDetail.jsx";
 import { InstitutionReviewQueue } from "./pages/InstitutionReviewQueue.jsx";
+import { InstitutionReviewDetail } from "./pages/InstitutionReviewDetail.jsx";
 import { AdminLogin } from "./pages/AdminLogin.jsx";
 
 function PublicLayout({ children }) {
@@ -87,6 +88,16 @@ function AppContent() {
       <AdminProtectedRoute requiredCapability="can_review_institutions">
         <AdminLayout>
           <InstitutionReviewQueue />
+        </AdminLayout>
+      </AdminProtectedRoute>
+    );
+  }
+
+  if (route.name === "admin-institution-detail") {
+    return (
+      <AdminProtectedRoute requiredCapability="can_review_institutions">
+        <AdminLayout>
+          <InstitutionReviewDetail />
         </AdminLayout>
       </AdminProtectedRoute>
     );

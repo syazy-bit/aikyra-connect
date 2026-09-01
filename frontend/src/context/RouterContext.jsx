@@ -102,6 +102,15 @@ export function RouterProvider({ children }) {
 
     if (path === "/admin/institutions") return { name: "admin-institutions", params: {}, query: {} };
 
+    const adminInstitutionDetailMatch = path.match(/^\/admin\/institutions\/([^/]+)$/);
+    if (adminInstitutionDetailMatch) {
+      return {
+        name: "admin-institution-detail",
+        params: { id: adminInstitutionDetailMatch[1] },
+        query: params,
+      };
+    }
+
     // Must be checked before the shorter /funding and /funding/manage routes
     // so the deeper demo-payment path is never shadowed.
     const projectFundingDemoPaymentMatch = path.match(

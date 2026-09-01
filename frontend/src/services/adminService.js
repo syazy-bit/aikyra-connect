@@ -45,3 +45,18 @@ export async function listAdminInstitutions(params = {}) {
   const query = searchParams.toString();
   return apiRequest(`/api/admin/institutions${query ? `?${query}` : ""}`);
 }
+
+export async function getAdminInstitution(institutionId) {
+  return apiRequest(`/api/admin/institutions/${institutionId}`);
+}
+
+export async function updateInstitutionVerification(institutionId, action, note = null) {
+  const payload = { action };
+  if (note && note.trim()) {
+    payload.note = note.trim();
+  }
+  return apiRequest(`/api/institutions/${institutionId}/verification`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}

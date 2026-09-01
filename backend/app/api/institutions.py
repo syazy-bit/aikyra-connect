@@ -141,7 +141,7 @@ def update_verification(
 
     if payload.action in _REVIEWER_ACTIONS:
         # Platform reviewer authorization - no institution membership required
-        if not current_user.is_platform_reviewer:
+        if not (current_user.is_platform_reviewer or current_user.can_review_institutions):
             raise ForbiddenError(
                 "You do not have platform reviewer permissions."
             )

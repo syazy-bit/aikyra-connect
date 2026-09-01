@@ -203,7 +203,7 @@ export function InstitutionReviewQueue() {
                 {items.map((institution) => (
                   <tr key={institution.id}>
                     <td>
-                      <Link href={`/institutions/${institution.id}`} className="admin-institution-link">
+                      <Link href={`/admin/institutions/${institution.id}`} className="admin-institution-link font-medium">
                         {institution.name}
                       </Link>
                     </td>
@@ -220,10 +220,10 @@ export function InstitutionReviewQueue() {
                     <td>{formatDate(institution.created_at)}</td>
                     <td>
                       <Link
-                        href={`/institutions/${institution.id}`}
+                        href={`/admin/institutions/${institution.id}`}
                         className="btn btn-secondary btn-sm"
                       >
-                        View
+                        Review
                       </Link>
                     </td>
                   </tr>
